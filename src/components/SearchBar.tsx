@@ -63,7 +63,7 @@ export default function SearchBar() {
         onChange={(event) => setQuery(event.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Pesquisar item, mod, arcane..."
+        placeholder="Buscar no Codex: frame, arma, mod, arcane..."
         className="w-full border border-line-2 bg-bg-2 px-3 py-2 font-mono text-xs text-ink-0 placeholder:text-ink-3 outline-none focus:border-line-cyan transition-colors"
       />
       {loading && (

@@ -8,8 +8,8 @@ import AccessibilityControls from "@/components/AccessibilityControls";
 const items = [
   {
     href: "/",
-    label: "Dashboard",
-    desc: "Market pulse · feed",
+    label: "Orbiter",
+    desc: "O que fazer agora",
   },
 ];
 

@@ -2,16 +2,22 @@ import Link from "next/link";
 import HudPanel from "@/components/HudPanel";
 import type { Opportunity } from "@/services/opportunityService";
 
-export default function OpportunityList({ opportunities }: { opportunities: Opportunity[] }) {
+export default function OpportunityList({
+  opportunities,
+  title,
+}: {
+  opportunities: Opportunity[];
+  title?: string;
+}) {
   return (
     <HudPanel
-      title={`Oportunidades detectadas · ${opportunities.length}`}
+      title={title ?? `Oportunidades detectadas · ${opportunities.length}`}
       variant="gold"
       clipped
     >
       {opportunities.length === 0 ? (
         <p className="font-body text-sm text-ink-2">
-          Nenhuma oportunidade clara entre os itens mais ativos agora. O mercado está dentro dos padrões históricos.
+          Sem caçada urgente agora, Tenno. O mercado está dentro dos padrões. Bom momento para farmar ou montar build.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 items-stretch">
