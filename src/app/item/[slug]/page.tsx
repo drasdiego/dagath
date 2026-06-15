@@ -326,7 +326,7 @@ export default async function ItemPage({
           generic={generic}
           report={report}
           accentColor={accentColor}
-          breadcrumb={`Console / Catálogo / ${generic.name}`}
+          breadcrumb={`Codex · ${generic.name}`}
         />
 
         {generic && (
@@ -429,7 +429,7 @@ export default async function ItemPage({
         generic={generic}
         report={report}
         accentColor={accentColor}
-        breadcrumb={`Console / Warframes / ${richItem.name}`}
+        breadcrumb={`Codex · ${richItem.name}`}
       />
 
       {generic && (

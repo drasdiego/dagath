@@ -26,7 +26,7 @@ export default async function FramePage({
     <main className="mx-auto max-w-[1680px] px-6 py-10 flex flex-col gap-6">
       <section className="hud-panel hud-panel--accent hud-panel--clipped flex flex-col gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3">
-          Console / Codex / {frame.name}
+          Codex · {frame.name}
         </p>
 
         <div className="flex items-center gap-2 flex-wrap">
