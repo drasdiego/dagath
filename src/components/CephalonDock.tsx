@@ -7,19 +7,17 @@ import ConsoleTerminal from "@/components/ConsoleTerminal";
 // um fundo sólido só aqui, para o conteúdo atrás não atrapalhar a leitura.
 const OPAQUE_SURFACE = { "--surface-glass": "var(--bg-1)" } as CSSProperties;
 
-const CHAMFER = "polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))";
-
 function ChatIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="miter" strokeLinecap="square" aria-hidden="true">
-      <path d="M4 4 H20 V15 H10 L6 19 V15 H4 Z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 1 1 16.1-3.8z" />
     </svg>
   );
 }
 
 function MinimizeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
       <line x1="5" y1="18" x2="19" y2="18" />
     </svg>
   );
@@ -49,12 +47,11 @@ export default function CephalonDock() {
         aria-label={open ? "Minimizar Cephalon" : "Abrir Cephalon"}
         aria-expanded={open}
         title="Cephalon · Assistente"
-        className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 border px-4 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] backdrop-blur-md transition-colors ${
+        className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border px-5 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] shadow-lg backdrop-blur-md transition-colors ${
           open
             ? "border-line-cyan bg-cyan-faint text-cyan"
             : "border-line-cyan bg-glass text-cyan hover:bg-cyan-faint"
         }`}
-        style={{ clipPath: CHAMFER }}
       >
         {open ? <MinimizeIcon /> : <ChatIcon />}
         {open ? "Minimizar" : "Cephalon"}

@@ -402,11 +402,21 @@ export default function ConsoleTerminal({
 
       {view === "history" ? (
         <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
+          <button
+            onClick={() => {
+              setView("chat");
+              setOpenSessionId(null);
+            }}
+            className="self-start border border-line-cyan px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-cyan hover:bg-cyan-faint transition-colors"
+          >
+            ‹ voltar ao chat
+          </button>
+
           {openSession ? (
             <>
               <button
                 onClick={() => setOpenSessionId(null)}
-                className="self-start font-mono text-[10px] uppercase tracking-[0.15em] text-cyan hover:underline"
+                className="self-start font-mono text-[10px] uppercase tracking-[0.15em] text-ink-3 hover:text-cyan transition-colors"
               >
                 ‹ voltar ao histórico
               </button>
