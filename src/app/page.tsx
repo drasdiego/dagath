@@ -35,6 +35,18 @@ function greeting(): string {
   return "Boa noite, Tenno";
 }
 
+// Sigilo da Cephalon: presença discreta da inteligência que assina a leitura.
+// Geometria Orokin de traço fino, não decoração ruidosa.
+function CephalonSigil() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="miter" aria-hidden="true">
+      <path d="M12 2 L21 12 L12 22 L3 12 Z" />
+      <path d="M12 7 L16.5 12 L12 17 L7.5 12 Z" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 type RowCell = {
   key: string;
   title: string;
@@ -65,65 +77,69 @@ function CaptionedRow({ cells }: { cells: RowCell[] }) {
   );
 }
 
-// Bloco focal do HUB: a prioridade do dia, não um relatório. Responde "o que
-// fazer agora?" com a melhor oportunidade do momento, no tom de um Tenno
-// veterano apontando a próxima caçada.
+// A recomendação principal, dita pela Cephalon. Autoria, voz e o porquê em
+// destaque: o jogador sente uma inteligência orientando, não um widget.
 function PrimeDirective({ opportunity }: { opportunity: Opportunity | null }) {
   if (!opportunity) {
     return (
-      <section className="hud-panel hud-panel--gold hud-panel--clipped flex flex-col gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3">
-          // O que fazer agora
-        </p>
-        <h2 className="font-display text-2xl lg:text-3xl font-semibold uppercase tracking-wide text-ink-0">
-          O Sistema Origem está calmo
+      <section className="hud-panel hud-panel--gold hud-panel--clipped flex flex-col gap-3 p-7">
+        <div className="flex items-center gap-2 text-ink-3">
+          <span className="text-cyan"><CephalonSigil /></span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em]">Cephalon Dagath</span>
+        </div>
+        <h2 className="font-display text-2xl lg:text-3xl font-semibold text-ink-0 leading-tight">
+          O Sistema Origem está calmo, Tenno
         </h2>
         <p className="font-body text-sm text-ink-1 max-w-2xl leading-relaxed">
-          Nenhuma caçada urgente no mercado agora, Tenno. Bom momento para farmar relíquias, montar uma build ou perguntar à Cephalon qual o próximo passo da sua jornada.
+          Não vejo nenhuma caçada urgente agora. Bom momento para farmar relíquias, montar uma build, ou me perguntar qual o próximo passo da sua jornada.
         </p>
       </section>
     );
   }
 
   return (
-    <Link href={`/item/${opportunity.slug}`} className="block group">
-      <section className="hud-panel hud-panel--gold hud-panel--clipped">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3">
-          // O que fazer agora
-        </p>
-        <div className="mt-3 flex items-start gap-4">
-          {opportunity.thumb ? (
-            <img
-              src={opportunity.thumb}
-              alt={opportunity.name}
-              width={64}
-              height={64}
-              className="shrink-0 border border-line-1 bg-bg-2/60 p-1"
-            />
-          ) : (
-            <span className="w-16 h-16 border border-line-1 shrink-0" />
-          )}
-          <div className="flex-1 min-w-0 flex flex-col gap-1">
-            <span className="font-mono text-[9px] uppercase tracking-[0.2em] px-1.5 py-0.5 bg-up-faint text-up w-fit">
-              {opportunity.kind}
-            </span>
-            <h2 className="font-display text-2xl lg:text-3xl font-semibold text-ink-0 leading-tight group-hover:text-gold transition-colors">
-              {opportunity.title}
-            </h2>
-            <p className="font-body text-sm text-ink-1">{opportunity.name}</p>
-            <p className="font-body text-xs text-ink-3">{opportunity.detail}</p>
-          </div>
-          <div className="shrink-0 flex flex-col items-end gap-2">
-            <p className="font-display text-3xl font-semibold text-gold tabular-nums">
+    <section className="hud-panel hud-panel--gold hud-panel--clipped p-7">
+      <div className="flex items-center gap-2 text-ink-3">
+        <span className="text-cyan"><CephalonSigil /></span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em]">
+          Cephalon Dagath · o que fazer agora
+        </span>
+      </div>
+
+      <div className="mt-5 flex items-start gap-5">
+        {opportunity.thumb ? (
+          <img
+            src={opportunity.thumb}
+            alt={opportunity.name}
+            width={72}
+            height={72}
+            className="shrink-0 border border-line-1 bg-bg-2/50 p-1"
+          />
+        ) : (
+          <span className="w-[72px] h-[72px] border border-line-1 shrink-0" />
+        )}
+
+        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+          <h2 className="font-display text-2xl lg:text-4xl font-semibold text-ink-0 leading-[1.05]">
+            {opportunity.title}
+          </h2>
+          <p className="font-body text-sm text-ink-1 leading-relaxed max-w-2xl">
+            <span className="text-ink-0">{opportunity.name}.</span> {opportunity.detail}
+          </p>
+          <div className="flex items-center gap-5 mt-1">
+            <span className="font-display text-2xl font-semibold text-gold tabular-nums">
               {opportunity.currentPrice}p
-            </p>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan group-hover:text-gold transition-colors">
-              Abrir no Codex →
             </span>
+            <Link
+              href={`/item/${opportunity.slug}`}
+              className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan hover:text-gold transition-colors border-b border-line-cyan pb-0.5"
+            >
+              Abrir no Codex →
+            </Link>
           </div>
         </div>
-      </section>
-    </Link>
+      </div>
+    </section>
   );
 }
 
@@ -142,7 +158,7 @@ export default async function DashboardPage() {
   const moreOpportunities = opportunities ? opportunities.slice(1) : [];
 
   return (
-    <main className="mx-auto max-w-[1680px] px-6 py-10 flex flex-col gap-6">
+    <main className="mx-auto max-w-[1680px] px-6 py-10 flex flex-col gap-7">
       <div>
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 mb-1">
           // Transmissão da Orbiter
@@ -151,139 +167,119 @@ export default async function DashboardPage() {
           {greeting()}
         </h1>
         <p className="font-body text-xs text-ink-2 mt-1">
-          Sistema Origem · {formatToday()} ·{" "}
+          {formatToday()} ·{" "}
           {pulse ? (
-            <span className="text-cyan">Cephalon Dagath ao vivo, lendo o Void e o mercado</span>
+            <span className="text-cyan">Estou lendo o Void e o mercado em tempo real</span>
           ) : (
-            <span className="text-down">Sem sinal do mercado · exibindo leitura de exemplo</span>
+            <span className="text-down">Sem sinal do mercado · leitura de exemplo</span>
           )}
         </p>
       </div>
 
-      {/* 1. O que fazer agora */}
+      {/* 1 e 2. Dagath recomenda o que fazer agora, e por quê */}
       <PrimeDirective opportunity={directive} />
 
-      {/* 2. Oportunidades do dia */}
+      {/* 3. Sua jornada, como contexto pessoal */}
+      <JourneyPanel />
+
+      {/* 4. O mundo reage e oferece oportunidades */}
+      <WorldStatus world={world} />
+
       {moreOpportunities.length > 0 && (
         <OpportunityList opportunities={moreOpportunities} title="Mais caçadas que valem a pena hoje" />
       )}
 
-      {/* 3. Próximos objetivos · jornada do jogador */}
-      <JourneyPanel />
+      {/* 5. Mercado como ferramenta de apoio (recolhido) */}
+      <details className="group flex flex-col gap-3">
+        <summary className="flex cursor-pointer select-none items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 transition-colors hover:text-cyan [&::-webkit-details-marker]:hidden">
+          <span className="inline-block transition-transform group-open:rotate-90">›</span>
+          Mercado · ferramenta de apoio
+        </summary>
 
-      {/* 4. O que está rolando no Sistema Origem */}
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 mb-2">
-          // O que está rolando no Sistema Origem
-        </p>
-        <WorldStatus world={world} />
-      </div>
-
-      {/* 4. Descobertas: o mercado se mexendo */}
-      {trends && (
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 mb-2">
-            // Descobertas · o mercado está se mexendo
-          </p>
-          <CaptionedRow
-            cells={[
-              {
-                key: "gainers",
-                title: "Aquecendo no mercado",
-                variant: "accent",
-                caption: `Subiram de preço nas últimas ${trends.windowLabel}. Quem comprou antes, lucra.`,
-                content: (
-                  <TrendList
-                    items={trends.topGainers}
-                    emptyMessage="Nada esquentando agora."
-                  />
-                ),
-              },
-              {
-                key: "losers",
-                title: "Esfriando",
-                caption: `Caíram de preço nas últimas ${trends.windowLabel}. Talvez a hora de garimpar.`,
-                content: (
-                  <TrendList
-                    items={trends.topLosers}
-                    emptyMessage="Nada esfriando agora."
-                  />
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
-
-      {/* 5. Mercado como ferramenta de apoio (recolhido por padrão) */}
-      {pulse ? (
-        <details className="group flex flex-col gap-3">
-          <summary className="flex cursor-pointer select-none items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 transition-colors hover:text-cyan [&::-webkit-details-marker]:hidden">
-            <span className="inline-block transition-transform group-open:rotate-90">›</span>
-            Mercado · ferramenta de apoio
-          </summary>
-
-          <div className="mt-3 flex flex-col gap-6">
+        <div className="mt-3 flex flex-col gap-6">
+          {trends && (
             <CaptionedRow
               cells={[
                 {
-                  key: "traded",
-                  title: "O que os Tenno estão caçando",
+                  key: "gainers",
+                  title: "Aquecendo no mercado",
                   variant: "accent",
-                  caption: "Itens com mais anúncios de compra e venda nas últimas 4 horas",
-                  content: <PulseList items={pulse.topTraded} metric="orders" />,
+                  caption: `Subiram de preço nas últimas ${trends.windowLabel}.`,
+                  content: <TrendList items={trends.topGainers} emptyMessage="Nada esquentando agora." />,
                 },
                 {
-                  key: "ticket",
-                  title: "Tesouros por unidade",
-                  caption: "Itens com o maior preço médio por unidade anunciada",
-                  content: <PulseList items={pulse.topTicket} metric="ticket" />,
+                  key: "losers",
+                  title: "Esfriando",
+                  caption: `Caíram de preço nas últimas ${trends.windowLabel}.`,
+                  content: <TrendList items={trends.topLosers} emptyMessage="Nada esfriando agora." />,
                 },
               ]}
             />
+          )}
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiCard
-                label="Ofertas no mercado"
-                value={pulse.totalOrders.toLocaleString("pt-BR")}
-                unit="ord"
-                delta={trends ? trends.totals.ordersDeltaPct : undefined}
-                sub={trends ? undefined : `${pulse.sellOrders} de venda · ${pulse.buyOrders} de compra`}
+          {pulse ? (
+            <>
+              <CaptionedRow
+                cells={[
+                  {
+                    key: "traded",
+                    title: "O que os Tenno estão caçando",
+                    variant: "accent",
+                    caption: "Itens com mais anúncios de compra e venda nas últimas 4 horas",
+                    content: <PulseList items={pulse.topTraded} metric="orders" />,
+                  },
+                  {
+                    key: "ticket",
+                    title: "Tesouros por unidade",
+                    caption: "Itens com o maior preço médio por unidade anunciada",
+                    content: <PulseList items={pulse.topTicket} metric="ticket" />,
+                  },
+                ]}
               />
-              <KpiCard
-                label="Platina circulando"
-                value={pulse.platVolume.toLocaleString("pt-BR")}
-                unit="plat"
-                sub="soma do valor dos anúncios"
-              />
-              <KpiCard
-                label="Tenno negociando"
-                value={pulse.uniqueTraders.toLocaleString("pt-BR")}
-                unit="usr"
-                sub="pessoas diferentes com anúncios"
-              />
-              <KpiCard
-                label="Pressão de compra"
-                value={String(buyPressure)}
-                unit="%"
-                sub="parte dos anúncios que é de compra"
-              />
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <KpiCard
+                  label="Ofertas no mercado"
+                  value={pulse.totalOrders.toLocaleString("pt-BR")}
+                  unit="ord"
+                  delta={trends ? trends.totals.ordersDeltaPct : undefined}
+                  sub={trends ? undefined : `${pulse.sellOrders} de venda · ${pulse.buyOrders} de compra`}
+                />
+                <KpiCard
+                  label="Platina circulando"
+                  value={pulse.platVolume.toLocaleString("pt-BR")}
+                  unit="plat"
+                  sub="soma do valor dos anúncios"
+                />
+                <KpiCard
+                  label="Tenno negociando"
+                  value={pulse.uniqueTraders.toLocaleString("pt-BR")}
+                  unit="usr"
+                  sub="pessoas diferentes com anúncios"
+                />
+                <KpiCard
+                  label="Pressão de compra"
+                  value={String(buyPressure)}
+                  unit="%"
+                  sub="parte dos anúncios que é de compra"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <HudPanel title="Aquecendo · Demo" variant="accent">
+                <MoverList items={dash.topUp} />
+              </HudPanel>
+              <HudPanel title="Esfriando · Demo">
+                <MoverList items={dash.topDown} />
+              </HudPanel>
+              <HudPanel title="Mais caçados · Demo">
+                <MoverList items={dash.topVol} />
+              </HudPanel>
             </div>
-          </div>
-        </details>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <HudPanel title="Aquecendo · Demo" variant="accent">
-            <MoverList items={dash.topUp} />
-          </HudPanel>
-          <HudPanel title="Esfriando · Demo">
-            <MoverList items={dash.topDown} />
-          </HudPanel>
-          <HudPanel title="Mais caçados · Demo">
-            <MoverList items={dash.topVol} />
-          </HudPanel>
+          )}
         </div>
-      )}
+      </details>
     </main>
   );
 }
