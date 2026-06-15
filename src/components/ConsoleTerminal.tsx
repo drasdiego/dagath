@@ -13,6 +13,17 @@ type HistoryEntry = {
   result: ConsoleResult;
 };
 
+type SavedSession = {
+  id: string;
+  startedAt: number;
+  title: string;
+  messages: HistoryEntry[];
+};
+
+const CURRENT_CHAT_KEY = "cephalon_chat_current";
+const CHAT_HISTORY_KEY = "cephalon_chat_history";
+const MAX_SESSIONS = 20;
+
 function ResultView({ result }: { result: ConsoleResult }) {
   if (result.kind === "error") {
     return <p className="font-mono text-sm text-down">{result.message}</p>;
@@ -170,6 +181,9 @@ export default function ConsoleTerminal({
   onMinimize?: () => void;
 }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [openSessionId, setOpenSessionId] = useState<string | null>(null);
   const [sessionMemory, setSessionMemory] = useState<SessionMemory | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -203,6 +217,72 @@ export default function ConsoleTerminal({
       // Sem persistência disponível: a sessão continua em memória.
     }
   }, [sessionMemory]);
+
+  // Ao carregar a página: arquiva a conversa anterior (se houver) no histórico
+  // do navegador e começa uma conversa nova. Roda antes do efeito de persistir.
+  useEffect(() => {
+    try {
+      const rawHistory = window.localStorage.getItem(CHAT_HISTORY_KEY);
+      let sessions: SavedSession[] = rawHistory ? (JSON.parse(rawHistory) as SavedSession[]) : [];
+
+      const rawCurrent = window.localStorage.getItem(CURRENT_CHAT_KEY);
+      if (rawCurrent) {
+        const messages = JSON.parse(rawCurrent) as HistoryEntry[];
+        if (Array.isArray(messages) && messages.length > 0) {
+          const firstInput = messages.find((entry) => entry.input)?.input ?? "Conversa";
+          sessions = [
+            { id: String(Date.now()), startedAt: Date.now(), title: firstInput.slice(0, 60), messages },
+            ...sessions,
+          ].slice(0, MAX_SESSIONS);
+          window.localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(sessions));
+        }
+        window.localStorage.removeItem(CURRENT_CHAT_KEY);
+      }
+
+      setSavedSessions(sessions);
+    } catch {
+      // Sem persistência: segue sem histórico.
+    }
+  }, []);
+
+  // Persiste a conversa atual no navegador (recuperada como sessão ao recarregar).
+  useEffect(() => {
+    try {
+      if (history.length > 0) {
+        window.localStorage.setItem(CURRENT_CHAT_KEY, JSON.stringify(history));
+      } else {
+        window.localStorage.removeItem(CURRENT_CHAT_KEY);
+      }
+    } catch {
+      // Sem persistência disponível.
+    }
+  }, [history]);
+
+  function newConversation() {
+    if (history.length > 0) {
+      const firstInput = history.find((entry) => entry.input)?.input ?? "Conversa";
+      const session: SavedSession = {
+        id: String(Date.now()),
+        startedAt: Date.now(),
+        title: firstInput.slice(0, 60),
+        messages: history,
+      };
+      setSavedSessions((prev) => {
+        const next = [session, ...prev].slice(0, MAX_SESSIONS);
+        try {
+          window.localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+    setHistory([]);
+    setView("chat");
+    setOpenSessionId(null);
+    try {
+      window.localStorage.removeItem(CURRENT_CHAT_KEY);
+    } catch {}
+    inputRef.current?.focus();
+  }
 
   function forgetContext(trimmed: string) {
     setSessionMemory(null);
@@ -278,6 +358,10 @@ export default function ConsoleTerminal({
     }
   }
 
+  const openSession = openSessionId
+    ? savedSessions.find((session) => session.id === openSessionId) ?? null
+    : null;
+
   return (
     <div className={`hud-panel hud-panel--accent flex flex-col ${embedded ? "h-full" : "h-[70vh]"}`}>
       <header className="hud-panel__title flex items-center justify-between gap-2">
@@ -285,59 +369,128 @@ export default function ConsoleTerminal({
           <span className="hud-panel__tick" />
           Cephalon · Assistente Dagath
         </span>
-        {onMinimize && (
+        <span className="flex items-center gap-2">
           <button
-            onClick={onMinimize}
-            aria-label="Minimizar chat"
-            title="Minimizar"
-            className="shrink-0 px-1 text-ink-3 hover:text-cyan transition-colors"
+            onClick={() => {
+              setView((current) => (current === "history" ? "chat" : "history"));
+              setOpenSessionId(null);
+            }}
+            aria-label="Histórico de conversas"
+            title="Histórico"
+            className={`shrink-0 font-mono text-[9px] uppercase tracking-[0.15em] border px-1.5 py-0.5 transition-colors ${
+              view === "history"
+                ? "border-line-cyan text-cyan"
+                : "border-line-2 text-ink-3 hover:text-cyan hover:border-line-cyan"
+            }`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <line x1="5" y1="18" x2="19" y2="18" />
-            </svg>
+            Histórico
           </button>
-        )}
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              aria-label="Minimizar chat"
+              title="Minimizar"
+              className="shrink-0 px-1 text-ink-3 hover:text-cyan transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <line x1="5" y1="18" x2="19" y2="18" />
+              </svg>
+            </button>
+          )}
+        </span>
       </header>
 
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-2">
-        {history.length === 0 && !loading && (
-          <p className="font-mono text-sm text-ink-2">
-            Cephalon em escuta. Pergunte sobre builds, mercado, farm ou mecânicas de Warframe. Digite <span className="text-cyan">ajuda</span> para os comandos diretos.
-          </p>
-        )}
-
-        {history.map((entry, index) => (
-          <div key={index} className="flex flex-col gap-1.5">
-            <p className="font-mono text-sm text-ink-3">
-              <span className="text-cyan">cephalon&gt;</span> {entry.input}
+      {view === "history" ? (
+        <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
+          {openSession ? (
+            <>
+              <button
+                onClick={() => setOpenSessionId(null)}
+                className="self-start font-mono text-[10px] uppercase tracking-[0.15em] text-cyan hover:underline"
+              >
+                ‹ voltar ao histórico
+              </button>
+              {openSession.messages.map((entry, index) => (
+                <div key={index} className="flex flex-col gap-1.5">
+                  <p className="font-mono text-sm text-ink-3">
+                    <span className="text-cyan">cephalon&gt;</span> {entry.input}
+                  </p>
+                  <div className="pl-4 border-l border-line-1">
+                    <ResultView result={entry.result} />
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : savedSessions.length === 0 ? (
+            <p className="font-mono text-sm text-ink-2">
+              Nenhuma conversa salva ainda. Suas conversas são guardadas aqui no navegador quando você recarrega a página ou inicia uma nova.
             </p>
-            <div className="pl-4 border-l border-line-1">
-              <ResultView result={entry.result} />
+          ) : (
+            savedSessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => setOpenSessionId(session.id)}
+                className="flex flex-col gap-0.5 text-left border border-line-1 px-3 py-2 hover:border-line-cyan transition-colors"
+              >
+                <span className="font-body text-sm text-ink-0 truncate">{session.title}</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-3">
+                  {new Date(session.startedAt).toLocaleString("pt-BR")} · {session.messages.length} mensagens
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-2">
+          {history.length === 0 && !loading && (
+            <p className="font-mono text-sm text-ink-2">
+              Cephalon em escuta. Pergunte sobre builds, mercado, farm ou mecânicas de Warframe. Digite <span className="text-cyan">ajuda</span> para os comandos diretos.
+            </p>
+          )}
+
+          {history.length > 0 && (
+            <button
+              onClick={newConversation}
+              className="self-end font-mono text-[9px] uppercase tracking-[0.15em] text-ink-3 hover:text-cyan transition-colors"
+            >
+              + nova conversa
+            </button>
+          )}
+
+          {history.map((entry, index) => (
+            <div key={index} className="flex flex-col gap-1.5">
+              <p className="font-mono text-sm text-ink-3">
+                <span className="text-cyan">cephalon&gt;</span> {entry.input}
+              </p>
+              <div className="pl-4 border-l border-line-1">
+                <ResultView result={entry.result} />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {loading && (
-          <p className="font-mono text-sm text-ink-3 animate-pulse">processando...</p>
-        )}
+          {loading && (
+            <p className="font-mono text-sm text-ink-3 animate-pulse">processando...</p>
+          )}
 
-        <div ref={bottomRef} />
-      </div>
+          <div ref={bottomRef} />
+        </div>
+      )}
 
-      <div className="flex items-center gap-2 border-t border-line-1 pt-3 mt-3">
-        <span className="font-mono text-sm text-cyan shrink-0">cephalon&gt;</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          spellCheck={false}
-          placeholder="Pergunte à Cephalon ou digite um comando..."
-          className="flex-1 bg-transparent font-mono text-sm text-ink-0 placeholder:text-ink-3 outline-none"
-        />
-      </div>
+      {view === "chat" && (
+        <div className="flex items-center gap-2 border-t border-line-1 pt-3 mt-3">
+          <span className="font-mono text-sm text-cyan shrink-0">cephalon&gt;</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            spellCheck={false}
+            placeholder="Pergunte à Cephalon ou digite um comando..."
+            className="flex-1 bg-transparent font-mono text-sm text-ink-0 placeholder:text-ink-3 outline-none"
+          />
+        </div>
+      )}
     </div>
   );
 }
