@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getSql, ensureSchema } from "@/lib/postgres";
 import { marketPulseService } from "@/services/marketPulseService";
 
 export type CollectResult = {
@@ -8,19 +8,7 @@ export type CollectResult = {
   totalRowsInDb: number;
 };
 
-const insertSnapshot = db.prepare(`
-  INSERT INTO price_snapshots (
-    collected_at, item_id, slug, name, thumb,
-    orders, units, plat_volume, avg_plat,
-    min_plat, max_plat, sell_orders, buy_orders
-  ) VALUES (
-    @collectedAt, @itemId, @slug, @name, @thumb,
-    @orders, @units, @platVolume, @avgPlat,
-    @minPlat, @maxPlat, @sellOrders, @buyOrders
-  )
-`);
-
-const countRows = db.prepare(`SELECT COUNT(*) AS total FROM price_snapshots`);
+const COLUMNS = 13;
 
 export const snapshotService = {
   async collect(): Promise<CollectResult | null> {
@@ -28,36 +16,57 @@ export const snapshotService = {
     if (!aggregation) return null;
 
     const collectedAt = new Date().toISOString();
+    const sql = await getSql();
+    await ensureSchema();
 
-    const insertAll = db.transaction(() => {
+    if (aggregation.stats.length > 0) {
+      // Insert em lote: uma única ida ao banco com VALUES parametrizado.
+      const placeholders = aggregation.stats
+        .map((_, row) => {
+          const base = row * COLUMNS;
+          const slots = Array.from({ length: COLUMNS }, (_, col) => `$${base + col + 1}`);
+          return `(${slots.join(", ")})`;
+        })
+        .join(", ");
+
+      const params: (string | number | null)[] = [];
       for (const stat of aggregation.stats) {
-        insertSnapshot.run({
+        params.push(
           collectedAt,
-          itemId: stat.itemId,
-          slug: stat.slug,
-          name: stat.name,
-          thumb: stat.thumb,
-          orders: stat.orders,
-          units: stat.units,
-          platVolume: stat.platVolume,
-          avgPlat: stat.avgPlat,
-          minPlat: stat.minPlat,
-          maxPlat: stat.maxPlat,
-          sellOrders: stat.sellOrders,
-          buyOrders: stat.buyOrders,
-        });
+          stat.itemId,
+          stat.slug,
+          stat.name,
+          stat.thumb,
+          stat.orders,
+          stat.units,
+          stat.platVolume,
+          stat.avgPlat,
+          stat.minPlat,
+          stat.maxPlat,
+          stat.sellOrders,
+          stat.buyOrders
+        );
       }
-    });
 
-    insertAll();
+      await sql.query(
+        `INSERT INTO price_snapshots (
+          collected_at, item_id, slug, name, thumb,
+          orders, units, plat_volume, avg_plat,
+          min_plat, max_plat, sell_orders, buy_orders
+        ) VALUES ${placeholders}`,
+        params
+      );
+    }
 
-    const row = countRows.get() as { total: number };
+    const { rows } = await sql<{ total: number }>`
+      SELECT COUNT(*)::int AS total FROM price_snapshots
+    `;
 
     return {
       collectedAt,
       itemsRecorded: aggregation.stats.length,
       totalOrders: aggregation.totalOrders,
-      totalRowsInDb: row.total,
+      totalRowsInDb: Number(rows[0]?.total ?? 0),
     };
   },
 };

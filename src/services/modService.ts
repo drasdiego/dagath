@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getSql, ensureSchema } from "@/lib/postgres";
 import { warframeMarket, WFM_ASSETS_URL } from "@/integrations/warframeMarket";
 
 export type RecommendedMod = {
@@ -29,13 +29,6 @@ export type PricedRecommendedMods = {
   totalPlat: number;
   pricedCount: number;
 };
-
-const selectMods = db.prepare(`
-  SELECT mod_name, mod_slug, role, note, position, source
-  FROM recommended_mods
-  WHERE item_slug = ?
-  ORDER BY position ASC
-`);
 
 type ModRow = {
   mod_name: string;
@@ -79,8 +72,16 @@ async function modDetail(modSlug: string): Promise<{
 }
 
 export const modService = {
-  getRecommendedMods(itemSlug: string): RecommendedMods | null {
-    const rows = selectMods.all(itemSlug) as ModRow[];
+  async getRecommendedMods(itemSlug: string): Promise<RecommendedMods | null> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const { rows } = await sql<ModRow>`
+      SELECT mod_name, mod_slug, role, note, position, source
+      FROM recommended_mods
+      WHERE item_slug = ${itemSlug}
+      ORDER BY position ASC
+    `;
     if (rows.length === 0) return null;
 
     return {
@@ -91,13 +92,13 @@ export const modService = {
         modSlug: row.mod_slug,
         role: row.role,
         note: row.note,
-        position: row.position,
+        position: Number(row.position),
       })),
     };
   },
 
   async getRecommendedModsWithPrices(itemSlug: string): Promise<PricedRecommendedMods | null> {
-    const base = this.getRecommendedMods(itemSlug);
+    const base = await this.getRecommendedMods(itemSlug);
     if (!base) return null;
 
     const mods: PricedMod[] = [];

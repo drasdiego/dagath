@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getSql, ensureSchema } from "@/lib/postgres";
 import type { MarketTrends, TrendMover } from "@/types";
 
 type JoinedRow = {
@@ -26,40 +26,6 @@ const MIN_PRICE = 15; // ignora itens muito baratos, onde % vira ruído
 const MIN_ORDERS = 2; // amostra mínima por janela (o feed de 4h é esparso por item)
 const MAX_DELTA_PCT = 100; // descarta variações absurdas (anúncio fora da curva)
 
-const distinctTimes = db.prepare(`
-  SELECT DISTINCT collected_at
-  FROM price_snapshots
-  ORDER BY collected_at DESC
-`);
-
-const joinedSnapshots = db.prepare(`
-  SELECT
-    cur.item_id,
-    cur.slug,
-    cur.name,
-    cur.thumb,
-    cur.avg_plat   AS cur_avg,
-    prev.avg_plat  AS prev_avg,
-    cur.orders     AS cur_orders,
-    prev.orders    AS prev_orders,
-    cur.plat_volume AS cur_volume
-  FROM price_snapshots cur
-  INNER JOIN price_snapshots prev
-    ON prev.item_id = cur.item_id
-   AND prev.collected_at = @previousAt
-  WHERE cur.collected_at = @currentAt
-`);
-
-const totalsByTime = db.prepare(`
-  SELECT
-    collected_at,
-    SUM(orders)      AS total_orders,
-    SUM(plat_volume) AS total_volume
-  FROM price_snapshots
-  WHERE collected_at IN (@currentAt, @previousAt)
-  GROUP BY collected_at
-`);
-
 function pctChange(current: number, previous: number): number {
   if (previous === 0) return 0;
   return ((current - previous) / previous) * 100;
@@ -76,10 +42,16 @@ function windowLabel(minutes: number): string {
 }
 
 export const trendService = {
-  getTrends(): MarketTrends | null {
-    const times = (distinctTimes.all() as { collected_at: string }[]).map(
-      (row) => row.collected_at
-    );
+  async getTrends(): Promise<MarketTrends | null> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const timesResult = await sql<{ collected_at: string }>`
+      SELECT DISTINCT collected_at
+      FROM price_snapshots
+      ORDER BY collected_at DESC
+    `;
+    const times = timesResult.rows.map((row) => row.collected_at);
     if (times.length < 2) return null;
 
     const currentAt = times[0];
@@ -102,26 +74,53 @@ export const trendService = {
       }
     }
 
-    const rows = joinedSnapshots.all({ currentAt, previousAt }) as JoinedRow[];
+    const joined = await sql<JoinedRow>`
+      SELECT
+        cur.item_id,
+        cur.slug,
+        cur.name,
+        cur.thumb,
+        cur.avg_plat   AS cur_avg,
+        prev.avg_plat  AS prev_avg,
+        cur.orders     AS cur_orders,
+        prev.orders    AS prev_orders,
+        cur.plat_volume AS cur_volume
+      FROM price_snapshots cur
+      INNER JOIN price_snapshots prev
+        ON prev.item_id = cur.item_id
+       AND prev.collected_at = ${previousAt}
+      WHERE cur.collected_at = ${currentAt}
+    `;
 
-    const movers: TrendMover[] = rows
-      .filter(
-        (row) =>
-          row.prev_avg >= MIN_PRICE &&
-          row.cur_avg >= MIN_PRICE &&
-          row.cur_orders >= MIN_ORDERS &&
-          row.prev_orders >= MIN_ORDERS
-      )
+    const movers: TrendMover[] = joined.rows
       .map((row) => ({
         itemId: row.item_id,
         slug: row.slug,
         name: row.name,
         thumb: row.thumb,
-        avgPlat: row.cur_avg,
-        prevAvgPlat: row.prev_avg,
-        deltaPct: pctChange(row.cur_avg, row.prev_avg),
-        orders: row.cur_orders,
-        platVolume: row.cur_volume,
+        curAvg: Number(row.cur_avg),
+        prevAvg: Number(row.prev_avg),
+        curOrders: Number(row.cur_orders),
+        prevOrders: Number(row.prev_orders),
+        curVolume: Number(row.cur_volume),
+      }))
+      .filter(
+        (row) =>
+          row.prevAvg >= MIN_PRICE &&
+          row.curAvg >= MIN_PRICE &&
+          row.curOrders >= MIN_ORDERS &&
+          row.prevOrders >= MIN_ORDERS
+      )
+      .map((row) => ({
+        itemId: row.itemId,
+        slug: row.slug,
+        name: row.name,
+        thumb: row.thumb,
+        avgPlat: row.curAvg,
+        prevAvgPlat: row.prevAvg,
+        deltaPct: pctChange(row.curAvg, row.prevAvg),
+        orders: row.curOrders,
+        platVolume: row.curVolume,
       }))
       .filter((mover) => Math.abs(mover.deltaPct) <= MAX_DELTA_PCT);
 
@@ -135,9 +134,17 @@ export const trendService = {
       .sort((a, b) => a.deltaPct - b.deltaPct)
       .slice(0, 5);
 
-    const totalsRows = totalsByTime.all({ currentAt, previousAt }) as TotalsRow[];
-    const currentTotals = totalsRows.find((row) => row.collected_at === currentAt);
-    const previousTotals = totalsRows.find((row) => row.collected_at === previousAt);
+    const totalsResult = await sql<TotalsRow>`
+      SELECT
+        collected_at,
+        SUM(orders)::int      AS total_orders,
+        SUM(plat_volume)::int AS total_volume
+      FROM price_snapshots
+      WHERE collected_at IN (${currentAt}, ${previousAt})
+      GROUP BY collected_at
+    `;
+    const currentTotals = totalsResult.rows.find((row) => row.collected_at === currentAt);
+    const previousTotals = totalsResult.rows.find((row) => row.collected_at === previousAt);
 
     const minutesBetween = Math.round((currentMs - Date.parse(previousAt)) / 60000);
 
@@ -149,15 +156,15 @@ export const trendService = {
       topGainers,
       topLosers,
       totals: {
-        orders: currentTotals?.total_orders ?? 0,
+        orders: Number(currentTotals?.total_orders ?? 0),
         ordersDeltaPct: pctChange(
-          currentTotals?.total_orders ?? 0,
-          previousTotals?.total_orders ?? 0
+          Number(currentTotals?.total_orders ?? 0),
+          Number(previousTotals?.total_orders ?? 0)
         ),
-        platVolume: currentTotals?.total_volume ?? 0,
+        platVolume: Number(currentTotals?.total_volume ?? 0),
         platVolumeDeltaPct: pctChange(
-          currentTotals?.total_volume ?? 0,
-          previousTotals?.total_volume ?? 0
+          Number(currentTotals?.total_volume ?? 0),
+          Number(previousTotals?.total_volume ?? 0)
         ),
       },
     };

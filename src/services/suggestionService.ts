@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getSql, ensureSchema, withTransaction } from "@/lib/postgres";
 
 export type SuggestionMod = {
   modName: string;
@@ -24,35 +24,6 @@ export type NewSuggestion = {
   mods: SuggestionMod[];
 };
 
-const insertSuggestion = db.prepare(`
-  INSERT INTO mod_suggestions (created_at, status, item_slug, item_name, author, mods_json)
-  VALUES (@createdAt, 'pending', @itemSlug, @itemName, @author, @modsJson)
-`);
-
-const selectByStatus = db.prepare(`
-  SELECT id, created_at, status, item_slug, item_name, author, mods_json
-  FROM mod_suggestions
-  WHERE status = ?
-  ORDER BY created_at ASC
-`);
-
-const selectById = db.prepare(`
-  SELECT id, created_at, status, item_slug, item_name, author, mods_json
-  FROM mod_suggestions
-  WHERE id = ?
-`);
-
-const updateStatus = db.prepare(`
-  UPDATE mod_suggestions SET status = @status WHERE id = @id
-`);
-
-const clearRecommended = db.prepare(`DELETE FROM recommended_mods WHERE item_slug = ?`);
-
-const insertRecommended = db.prepare(`
-  INSERT INTO recommended_mods (item_slug, mod_name, mod_slug, role, note, position, source)
-  VALUES (@itemSlug, @modName, @modSlug, @role, @note, @position, @source)
-`);
-
 type SuggestionRow = {
   id: number;
   created_at: string;
@@ -65,7 +36,7 @@ type SuggestionRow = {
 
 function rowToSuggestion(row: SuggestionRow): Suggestion {
   return {
-    id: row.id,
+    id: Number(row.id),
     createdAt: row.created_at,
     status: row.status,
     itemSlug: row.item_slug,
@@ -76,24 +47,41 @@ function rowToSuggestion(row: SuggestionRow): Suggestion {
 }
 
 export const suggestionService = {
-  create(suggestion: NewSuggestion): number {
-    const result = insertSuggestion.run({
-      createdAt: new Date().toISOString(),
-      itemSlug: suggestion.itemSlug,
-      itemName: suggestion.itemName,
-      author: suggestion.author,
-      modsJson: JSON.stringify(suggestion.mods),
-    });
-    return Number(result.lastInsertRowid);
+  async create(suggestion: NewSuggestion): Promise<number> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const { rows } = await sql<{ id: number }>`
+      INSERT INTO mod_suggestions (created_at, status, item_slug, item_name, author, mods_json)
+      VALUES (${new Date().toISOString()}, 'pending', ${suggestion.itemSlug}, ${suggestion.itemName}, ${suggestion.author}, ${JSON.stringify(suggestion.mods)})
+      RETURNING id
+    `;
+    return Number(rows[0].id);
   },
 
-  listPending(): Suggestion[] {
-    const rows = selectByStatus.all("pending") as SuggestionRow[];
+  async listPending(): Promise<Suggestion[]> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const { rows } = await sql<SuggestionRow>`
+      SELECT id, created_at, status, item_slug, item_name, author, mods_json
+      FROM mod_suggestions
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+    `;
     return rows.map(rowToSuggestion);
   },
 
-  approve(id: number): boolean {
-    const row = selectById.get(id) as SuggestionRow | undefined;
+  async approve(id: number): Promise<boolean> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const { rows } = await sql<SuggestionRow>`
+      SELECT id, created_at, status, item_slug, item_name, author, mods_json
+      FROM mod_suggestions
+      WHERE id = ${id}
+    `;
+    const row = rows[0];
     if (!row || row.status !== "pending") return false;
 
     const suggestion = rowToSuggestion(row);
@@ -101,38 +89,40 @@ export const suggestionService = {
       ? `Sugerido por ${suggestion.author} · comunidade Dagath`
       : "Sugestão da comunidade Dagath";
 
-    const apply = db.transaction(() => {
-      clearRecommended.run(suggestion.itemSlug);
-      suggestion.mods.forEach((mod, index) => {
-        insertRecommended.run({
-          itemSlug: suggestion.itemSlug,
-          modName: mod.modName,
-          modSlug: mod.modSlug,
-          role: mod.role,
-          note: mod.note,
-          position: index + 1,
-          source,
-        });
-      });
-      updateStatus.run({ id, status: "approved" });
+    await withTransaction(async (tx) => {
+      await tx`DELETE FROM recommended_mods WHERE item_slug = ${suggestion.itemSlug}`;
+      let position = 1;
+      for (const mod of suggestion.mods) {
+        await tx`
+          INSERT INTO recommended_mods (item_slug, mod_name, mod_slug, role, note, position, source)
+          VALUES (${suggestion.itemSlug}, ${mod.modName}, ${mod.modSlug}, ${mod.role}, ${mod.note}, ${position}, ${source})
+        `;
+        position += 1;
+      }
+      await tx`UPDATE mod_suggestions SET status = 'approved' WHERE id = ${id}`;
     });
 
-    apply();
     return true;
   },
 
-  reject(id: number): boolean {
-    const row = selectById.get(id) as SuggestionRow | undefined;
-    if (!row || row.status !== "pending") return false;
-    updateStatus.run({ id, status: "rejected" });
+  async reject(id: number): Promise<boolean> {
+    const sql = await getSql();
+    await ensureSchema();
+
+    const { rows } = await sql<{ status: string }>`
+      SELECT status FROM mod_suggestions WHERE id = ${id}
+    `;
+    if (!rows[0] || rows[0].status !== "pending") return false;
+
+    await sql`UPDATE mod_suggestions SET status = 'rejected' WHERE id = ${id}`;
     return true;
   },
 
-  approveAll(): number {
-    const pending = this.listPending();
+  async approveAll(): Promise<number> {
+    const pending = await this.listPending();
     let count = 0;
     for (const suggestion of pending) {
-      if (this.approve(suggestion.id)) count += 1;
+      if (await this.approve(suggestion.id)) count += 1;
     }
     return count;
   },

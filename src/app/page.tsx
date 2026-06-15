@@ -65,7 +65,7 @@ function CaptionedRow({ cells }: { cells: RowCell[] }) {
 export default async function DashboardPage() {
   const dash = dashboardService.getData();
   const pulse = await marketPulseService.getPulse();
-  const trends = trendService.getTrends();
+  const trends = await trendService.getTrends();
   const opportunities = await opportunityService.getOpportunities();
   const world = await worldService.getWorldState();
 

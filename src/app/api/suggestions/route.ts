@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const id = suggestionService.create({ itemSlug, itemName, author, mods });
+    const id = await suggestionService.create({ itemSlug, itemName, author, mods });
     return NextResponse.json({ ok: true, id });
   } catch {
     return NextResponse.json(
@@ -55,5 +55,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  return NextResponse.json({ pending: suggestionService.listPending() });
+  return NextResponse.json({ pending: await suggestionService.listPending() });
 }

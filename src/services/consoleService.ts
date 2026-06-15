@@ -182,7 +182,7 @@ async function buildMarketContext(): Promise<string> {
     );
   }
 
-  const trends = trendService.getTrends();
+  const trends = await trendService.getTrends();
   if (trends) {
     const formatMover = (mover: { name: string | null; prevAvgPlat: number; avgPlat: number; deltaPct: number }) =>
       `${mover.name} (${mover.prevAvgPlat}p para ${mover.avgPlat}p, ${mover.deltaPct >= 0 ? "+" : ""}${mover.deltaPct.toFixed(1)}%)`;
@@ -236,7 +236,7 @@ export const consoleService = {
     }
 
     if (head === "alta" || head === "queda") {
-      const trends = trendService.getTrends();
+      const trends = await trendService.getTrends();
       if (!trends) {
         return {
           kind: "error",

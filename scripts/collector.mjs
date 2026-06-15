@@ -1,5 +1,8 @@
-const COLLECT_URL = "http://localhost:3000/api/collect";
+// Coletor local para desenvolvimento. Em produção a coleta roda via Vercel Cron.
+// Rode com: node --env-file=.env.local scripts/collector.mjs
+const COLLECT_URL = process.env.COLLECT_URL ?? "http://localhost:3000/api/collect";
 const INTERVAL_MINUTES = 5;
+const CRON_SECRET = process.env.CRON_SECRET;
 
 function timestamp() {
   return new Date().toLocaleTimeString("pt-BR");
@@ -7,7 +10,8 @@ function timestamp() {
 
 async function collect() {
   try {
-    const response = await fetch(COLLECT_URL);
+    const headers = CRON_SECRET ? { Authorization: `Bearer ${CRON_SECRET}` } : undefined;
+    const response = await fetch(COLLECT_URL, { headers });
     const data = await response.json();
 
     if (!response.ok) {

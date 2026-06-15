@@ -1,25 +1,8 @@
-import { createRequire } from "module";
-import path from "path";
+import { sql } from "@vercel/postgres";
 
-const require = createRequire(import.meta.url);
-const Database = require("better-sqlite3");
-
-const db = new Database(path.join(process.cwd(), "data", "dagath.db"));
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS recommended_mods (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_slug TEXT NOT NULL,
-    mod_name TEXT NOT NULL,
-    mod_slug TEXT,
-    role TEXT NOT NULL,
-    note TEXT,
-    position INTEGER NOT NULL,
-    source TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_recommended_mods_item
-    ON recommended_mods (item_slug);
-`);
+// Seed das builds curadas no Postgres.
+// Requer POSTGRES_URL no ambiente. Rode com:
+//   node --env-file=.env.local scripts/seed-mods.mjs
 
 const SOURCE = "Curadoria Dagath · builds populares da comunidade";
 
@@ -36,28 +19,37 @@ const KHORA_MODS = [
   ["Cunning Drift", "cunning_drift", "Exilus", "Alcance extra no slot que não compete com os outros mods"],
 ];
 
-const clear = db.prepare("DELETE FROM recommended_mods WHERE item_slug = ?");
-const insert = db.prepare(`
-  INSERT INTO recommended_mods (item_slug, mod_name, mod_slug, role, note, position, source)
-  VALUES (@itemSlug, @modName, @modSlug, @role, @note, @position, @source)
-`);
+async function main() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS recommended_mods (
+      id BIGSERIAL PRIMARY KEY,
+      item_slug TEXT NOT NULL,
+      mod_name TEXT NOT NULL,
+      mod_slug TEXT,
+      role TEXT NOT NULL,
+      note TEXT,
+      position INTEGER NOT NULL,
+      source TEXT
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_recommended_mods_item ON recommended_mods (item_slug);`;
 
-const seed = db.transaction(() => {
-  clear.run("khora_prime_set");
-  KHORA_MODS.forEach(([modName, modSlug, role, note], index) => {
-    insert.run({
-      itemSlug: "khora_prime_set",
-      modName,
-      modSlug,
-      role,
-      note,
-      position: index + 1,
-      source: SOURCE,
-    });
-  });
+  await sql`DELETE FROM recommended_mods WHERE item_slug = 'khora_prime_set'`;
+
+  let position = 1;
+  for (const [modName, modSlug, role, note] of KHORA_MODS) {
+    await sql`
+      INSERT INTO recommended_mods (item_slug, mod_name, mod_slug, role, note, position, source)
+      VALUES ('khora_prime_set', ${modName}, ${modSlug}, ${role}, ${note}, ${position}, ${SOURCE})
+    `;
+    position += 1;
+  }
+
+  const { rows } = await sql`SELECT COUNT(*)::int AS total FROM recommended_mods`;
+  console.log(`Seed concluído · ${rows[0].total} mods recomendados no Postgres`);
+}
+
+main().catch((error) => {
+  console.error("Falha no seed:", error);
+  process.exit(1);
 });
-
-seed();
-
-const count = db.prepare("SELECT COUNT(*) AS total FROM recommended_mods").get();
-console.log(`Seed concluído · ${count.total} mods recomendados no banco`);

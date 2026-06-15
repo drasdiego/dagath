@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const mods = modService.getRecommendedMods(slug);
+  const mods = await modService.getRecommendedMods(slug);
 
   if (!mods) {
     return NextResponse.json(
