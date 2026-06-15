@@ -11,11 +11,6 @@ const items = [
     label: "Dashboard",
     desc: "Market pulse · feed",
   },
-  {
-    href: "/console",
-    label: "Cephalon",
-    desc: "Assistente · IA",
-  },
 ];
 
 const CHAMFER = "polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))";

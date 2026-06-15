@@ -1,11 +1,11 @@
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
 
 // Orçamento de raciocínio. -1 deixa o modelo decidir (dinâmico): perguntas
 // simples respondem rápido, perguntas complexas ganham mais profundidade.
 const THINKING_BUDGET = Number.parseInt(process.env.GEMINI_THINKING_BUDGET ?? "-1", 10);
-const MAX_OUTPUT_TOKENS = Number.parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS ?? "2048", 10);
+const MAX_OUTPUT_TOKENS = Number.parseInt(process.env.GEMINI_MAX_OUTPUT_TOKENS ?? "8192", 10);
 
 type GeminiResponse = {
   candidates?: {

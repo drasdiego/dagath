@@ -12,6 +12,7 @@ import {
   extractMemory,
 } from "@/services/cephalonMemory";
 import { codexService } from "@/services/codex/codexService";
+import { frameService, type Frame } from "@/services/frameService";
 
 export type ConsoleHelpResult = {
   kind: "help";
@@ -103,10 +104,12 @@ const AI_SYSTEM_INSTRUCTION = [
   "Use seu conhecimento profundo do jogo: warframes, armas, mods, arcanes, builds, farm, missões, facções, mecânicas e lore. Responda como quem realmente joga há anos.",
   "Regra de dados de mercado: para preço, melhor oferta, disponibilidade e qualquer número de mercado, use SOMENTE o retrato de dados da Dagath fornecido na conversa. Nunca invente preços nem estatísticas de mercado. Se o dado não estiver presente, diga que não tem o número agora e sugira o comando preço <item>.",
   "Conhecimento de jogo (mecânica, build, farm, lore) pode vir do seu próprio conhecimento. Se algo puder ter mudado em updates recentes, sinalize brevemente que vale confirmar no jogo.",
+  "Warframe recebe conteúdo novo o tempo todo. Nunca afirme que um Warframe, arma, mod ou item não existe só porque você não o reconhece. Trate como possível conteúdo recente além do seu conhecimento atual: diga isso com transparência e mesmo assim seja útil (explique o que dá para inferir pelo nome ou contexto, ofereça um caminho geral de avaliação, e peça uma confirmação curta). Nunca responda apenas mandando o usuário verificar o nome.",
   "Responda em português do Brasil. Não use markdown (sem asteriscos, cerquilha, hifens de lista ou tabelas). Pode usar quebras de linha curtas para separar ideias quando ajudar a leitura.",
   "Ajuste o tamanho à pergunta: objetiva quando simples, aprofundada quando a pergunta pedir (comparar builds, explicar mecânica, planejar farm). Sem encher linguiça.",
-  "Cubra apenas Warframe. Se a pergunta fugir do tema, redirecione com cordialidade.",
-  "Você pode receber uma memória operacional da sessão (objetivo, itens em análise, comparações, build, restrições, decisões pendentes). Use-a para dar continuidade à missão atual, adaptar recomendações ao objetivo em andamento, lembrar decisões já tomadas e evitar que o usuário repita contexto. Se a memória estiver vazia, conduza normalmente.",
+  "Cubra apenas Warframe. Só redirecione quando a pergunta claramente não for sobre Warframe. Na dúvida, assuma que é sobre Warframe e ajude.",
+  "Você pode receber uma memória operacional da sessão (objetivo, itens em análise, comparações, build, restrições, decisões pendentes). Use-a de forma silenciosa e apenas quando for diretamente relevante à pergunta atual.",
+  "Nunca comece a resposta retomando, citando ou contrastando o contexto anterior. Não diga coisas como 'embora estivéssemos focados em X' nem mencione a diretriz ou o assunto anterior. Se a nova pergunta muda de assunto, responda só à nova pergunta e ignore o contexto antigo que não se aplica. A memória serve para você não pedir que o usuário repita dados, não para narrar o histórico.",
   "Você lembra apenas da missão atual desta sessão, nunca do usuário como pessoa. Não finja lembrar de conversas passadas além desta sessão.",
   "Hierarquia de fontes, nesta ordem: 1) Dagath, fonte oficial da verdade para preço e disponibilidade; 2) seu conhecimento consolidado de Warframe; 3) Codex Vivo, conhecimento coletivo auxiliar; 4) contexto operacional da sessão. Em caso de conflito, vale Dagath sobre modelo, modelo sobre Codex, Codex sobre contexto. O Codex Vivo é auxiliar e nunca substitui dado oficial da Dagath. Quando não houver dado oficial, diga isso explicitamente.",
   "Tom: especialista confiante, direta e prestativa, como um bom Cephalon de bordo.",
@@ -199,6 +202,27 @@ async function buildMarketContext(): Promise<string> {
     lines.push("Sem dados de mercado disponíveis no momento.");
   }
 
+  return lines.join("\n");
+}
+
+function buildFrameContext(frame: Frame): string {
+  const lines: string[] = [
+    `Dados oficiais do Warframe ${frame.name} (fonte warframestat.us, ao vivo). Use estes dados como verdade sobre o frame.`,
+  ];
+  if (frame.description) lines.push(`Descrição: ${frame.description}`);
+  if (frame.passive) lines.push(`Passiva: ${frame.passive}`);
+  if (frame.abilities.length > 0) {
+    lines.push(
+      `Habilidades: ${frame.abilities.map((ability) => `${ability.name} (${ability.description})`).join("; ")}`
+    );
+  }
+  const stats: string[] = [];
+  if (frame.health !== null) stats.push(`vida ${frame.health}`);
+  if (frame.shield !== null) stats.push(`escudo ${frame.shield}`);
+  if (frame.armor !== null) stats.push(`armadura ${frame.armor}`);
+  if (frame.masteryReq !== null) stats.push(`Mastery ${frame.masteryReq}`);
+  if (stats.length > 0) lines.push(`Atributos base: ${stats.join(", ")}.`);
+  if (frame.introduced) lines.push(`Introduzido em: ${frame.introduced}.`);
   return lines.join("\n");
 }
 
@@ -329,10 +353,18 @@ export const consoleService = {
         return parts;
       })();
       const codexPromise = codexService.getAssistiveKnowledge(rawInput.trim());
-      const [contextParts, codexKnowledge] = await Promise.all([contextPromise, codexPromise]);
+      const framePromise = frameService.findMentioned(rawInput);
+      const [contextParts, codexKnowledge, frame] = await Promise.all([
+        contextPromise,
+        codexPromise,
+        framePromise,
+      ]);
 
       const sections: string[] = [];
       sections.push(`Dados da Dagath:\n${contextParts.join("\n\n")}`);
+      if (frame) {
+        sections.push(buildFrameContext(frame));
+      }
       if (codexKnowledge.length > 0) {
         const knowledge = codexKnowledge.map((entry) => `- ${entry.knowledge}`).join("\n");
         sections.push(

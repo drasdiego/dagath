@@ -6,5 +6,6 @@ import type { CodexEntry } from "./types";
 export interface CodexRepository {
   save(entry: CodexEntry): Promise<void>;
   findRelevant(query: string): Promise<CodexEntry[]>;
+  recent(limit: number): Promise<CodexEntry[]>;
   consolidate(entries: CodexEntry[]): Promise<void>;
 }

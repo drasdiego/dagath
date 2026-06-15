@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SearchResult = {
+  kind: "item" | "frame";
   slug: string;
   name: string;
   maxRank: number | null;
@@ -46,11 +47,12 @@ export default function SearchBar() {
     };
   }, [query]);
 
-  function handleSelect(slug: string) {
+  function handleSelect(result: SearchResult) {
     setQuery("");
     setResults([]);
     setOpen(false);
-    router.push(`/item/${slug}`);
+    const path = result.kind === "frame" ? "/frame" : "/item";
+    router.push(`${path}/${result.slug}`);
   }
 
   return (
@@ -75,7 +77,7 @@ export default function SearchBar() {
           {results.map((item) => (
             <li key={item.slug}>
               <button
-                onMouseDown={() => handleSelect(item.slug)}
+                onMouseDown={() => handleSelect(item)}
                 className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-bg-2 transition-colors"
               >
                 {item.thumb ? (
@@ -92,11 +94,15 @@ export default function SearchBar() {
                 <span className="flex-1 font-body text-sm text-ink-0 truncate">
                   {item.name}
                 </span>
-                {item.maxRank !== null && (
+                {item.kind === "frame" ? (
+                  <span className="font-mono text-[9px] uppercase border border-line-cyan px-1.5 py-0.5 text-cyan shrink-0">
+                    Warframe
+                  </span>
+                ) : item.maxRank !== null ? (
                   <span className="font-mono text-[9px] uppercase border border-line-2 px-1.5 py-0.5 text-ink-2 shrink-0">
                     R0-{item.maxRank}
                   </span>
-                )}
+                ) : null}
               </button>
             </li>
           ))}

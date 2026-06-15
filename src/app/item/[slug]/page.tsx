@@ -11,8 +11,84 @@ import { insightService } from "@/services/insightService";
 import { dropService } from "@/services/dropService";
 import { modService } from "@/services/modService";
 import { artColorService } from "@/services/artColorService";
+import { frameService, type Frame } from "@/services/frameService";
+import { weaponService, type WeaponStats } from "@/services/weaponService";
 import type { ItemDrops } from "@/services/dropService";
 import type { GenericBestOffer, GenericItem } from "@/types";
+
+function FrameAbilitiesPanel({ frame }: { frame: Frame }) {
+  const stats = [
+    frame.health !== null && { label: "Vida", value: String(frame.health) },
+    frame.shield !== null && { label: "Escudo", value: String(frame.shield) },
+    frame.armor !== null && { label: "Armadura", value: String(frame.armor) },
+    frame.sprintSpeed !== null && { label: "Sprint", value: String(frame.sprintSpeed) },
+    frame.masteryReq !== null && { label: "Mastery", value: String(frame.masteryReq) },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  if (stats.length === 0 && frame.abilities.length === 0 && !frame.passive) return null;
+
+  return (
+    <HudPanel title="Warframe · atributos e habilidades">
+      <div className="flex flex-col gap-4">
+        {(stats.length > 0 || frame.introduced) && (
+          <div className="flex flex-wrap items-start gap-x-5 gap-y-2">
+            {stats.map((stat) => (
+              <div key={stat.label}>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-3">
+                  {stat.label}
+                </p>
+                <p className="font-display text-base font-semibold text-gold tabular-nums">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+            {frame.introduced && (
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-3">
+                  Introduzido
+                </p>
+                <p className="font-display text-base font-semibold text-ink-1">
+                  {frame.introduced}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {frame.passive && (
+          <div className="border-t border-line-1 pt-4">
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-3">Passiva</p>
+            <p className="font-body text-sm text-ink-1 mt-1 leading-relaxed whitespace-pre-line">
+              {frame.passive}
+            </p>
+          </div>
+        )}
+
+        {frame.abilities.map((ability) => (
+          <div key={ability.name} className="border-t border-line-1 pt-4">
+            <p className="font-display text-sm font-semibold uppercase tracking-wide text-cyan">
+              {ability.name}
+            </p>
+            <p className="font-body text-sm text-ink-1 mt-1 leading-relaxed whitespace-pre-line">
+              {ability.description}
+            </p>
+          </div>
+        ))}
+
+        {frame.wikiUrl && (
+          <a
+            href={frame.wikiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-fit border border-line-2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-2 hover:border-line-cyan hover:text-cyan transition-colors"
+          >
+            Wiki ↗
+          </a>
+        )}
+      </div>
+    </HudPanel>
+  );
+}
 
 function TradeStats({ generic }: { generic: GenericItem }) {
   const stats = [
@@ -139,6 +215,70 @@ function RankOfferBlock({ rank, offer }: { rank: number; offer: GenericBestOffer
   );
 }
 
+function WeaponStatsPanel({ weapon }: { weapon: WeaponStats }) {
+  const stats = [
+    weapon.criticalChance !== null && {
+      label: "Crítico",
+      value: `${Math.round(weapon.criticalChance * 100)}%`,
+    },
+    weapon.criticalMultiplier !== null && {
+      label: "Mult. crítico",
+      value: `${weapon.criticalMultiplier}x`,
+    },
+    weapon.statusChance !== null && {
+      label: "Status",
+      value: `${Math.round(weapon.statusChance * 100)}%`,
+    },
+    weapon.fireRate !== null && { label: "Cadência", value: weapon.fireRate.toFixed(1) },
+    weapon.totalDamage !== null &&
+      weapon.totalDamage > 0 && {
+        label: "Dano total",
+        value: String(Math.round(weapon.totalDamage)),
+      },
+    weapon.magazineSize !== null && {
+      label: "Carregador",
+      value: String(weapon.magazineSize),
+    },
+    weapon.reloadTime !== null && {
+      label: "Recarga",
+      value: `${weapon.reloadTime.toFixed(1)}s`,
+    },
+    weapon.masteryReq !== null && { label: "Mastery", value: String(weapon.masteryReq) },
+    weapon.disposition !== null && { label: "Riven", value: `${weapon.disposition}/5` },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  if (stats.length === 0) return null;
+
+  return (
+    <HudPanel title={`Arma · atributos${weapon.type ? ` · ${weapon.type}` : ""}`}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-x-5 gap-y-3">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-3">
+                {stat.label}
+              </p>
+              <p className="font-display text-base font-semibold text-gold tabular-nums">
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+        {weapon.wikiUrl && (
+          <a
+            href={weapon.wikiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-fit border border-line-2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-2 hover:border-line-cyan hover:text-cyan transition-colors"
+          >
+            Wiki ↗
+          </a>
+        )}
+      </div>
+    </HudPanel>
+  );
+}
+
 export default async function ItemPage({
   params,
 }: {
@@ -163,6 +303,8 @@ export default async function ItemPage({
   ]);
 
   const recommendedMods = await modService.getRecommendedModsWithPrices(statsSlug);
+  const frame = await frameService.findMentioned(displayName);
+  const weapon = frame ? null : await weaponService.getStats(displayName);
 
   if (!item && generic) {
     const badges: { label: string; tone: "gold" | "cyan" | "neutral" | "up" | "down" }[] = [];
@@ -242,12 +384,14 @@ export default async function ItemPage({
             </div>
           );
 
-          const hasKnowledge = Boolean(generic.setParts || drops || recommendedMods);
+          const hasKnowledge = Boolean(generic.setParts || drops || recommendedMods || frame || weapon);
           if (!hasKnowledge) return marketColumn;
 
           return (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
               <div className="flex flex-col gap-6">
+                {frame && <FrameAbilitiesPanel frame={frame} />}
+                {weapon && <WeaponStatsPanel weapon={weapon} />}
                 {generic.setParts && <SetPartsPanel parts={generic.setParts} />}
                 {recommendedMods && <ModsPanel recommended={recommendedMods} />}
                 {drops && <DropsPanel drops={drops} />}
@@ -296,6 +440,8 @@ export default async function ItemPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col gap-6">
+          {frame && <FrameAbilitiesPanel frame={frame} />}
+
           {generic?.setParts && <SetPartsPanel parts={generic.setParts} />}
 
           {recommendedMods && <ModsPanel recommended={recommendedMods} />}

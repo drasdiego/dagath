@@ -69,41 +69,48 @@ export default function InsightPanel({ report }: { report: InsightReport }) {
           </div>
         </div>
 
-        <div className="flex flex-col">
-          {report.insights.map((insight, index) => {
-            const style = TONE_STYLES[insight.tone];
-            return (
-              <div
-                key={insight.title}
-                className={`flex items-start gap-3 py-2.5 ${
-                  index > 0 ? "border-t border-line-1" : ""
-                }`}
-              >
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
-                  style={{ background: style.dot, boxShadow: `0 0 6px ${style.dot}` }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className={`font-mono text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 ${style.badge}`}>
-                      {insight.kind}
-                    </span>
-                    <span className="font-body text-sm text-ink-0">{insight.title}</span>
-                  </div>
-                  <p className="font-body text-xs text-ink-3 leading-snug">{insight.detail}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <details className="group flex flex-col gap-3">
+          <summary className="flex cursor-pointer select-none list-none items-center gap-2 font-mono text-[9px] uppercase tracking-[0.25em] text-ink-3 transition-colors hover:text-cyan [&::-webkit-details-marker]:hidden">
+            <span className="inline-block transition-transform group-open:rotate-90">›</span>
+            Ver fundamento · {report.insights.length} fatores e histórico de 90 dias
+          </summary>
 
-        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-line-1 pt-3 font-mono text-[10px] text-ink-3">
-          <span>Semana <span className="text-ink-1 tabular-nums">{report.avg7}p</span></span>
-          <span>Mês <span className="text-ink-1 tabular-nums">{report.avg30}p</span></span>
-          <span>Mín 90d <span className="text-ink-1 tabular-nums">{report.min90}p</span></span>
-          <span>Máx 90d <span className="text-ink-1 tabular-nums">{report.max90}p</span></span>
-          <span>Negociações/dia <span className="text-ink-1 tabular-nums">{report.volumeAvg30}</span></span>
-        </div>
+          <div className="mt-3 flex flex-col">
+            {report.insights.map((insight, index) => {
+              const style = TONE_STYLES[insight.tone];
+              return (
+                <div
+                  key={insight.title}
+                  className={`flex items-start gap-3 py-2.5 ${
+                    index > 0 ? "border-t border-line-1" : ""
+                  }`}
+                >
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
+                    style={{ background: style.dot, boxShadow: `0 0 6px ${style.dot}` }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className={`font-mono text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 ${style.badge}`}>
+                        {insight.kind}
+                      </span>
+                      <span className="font-body text-sm text-ink-0">{insight.title}</span>
+                    </div>
+                    <p className="font-body text-xs text-ink-3 leading-snug">{insight.detail}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-line-1 pt-3 font-mono text-[10px] text-ink-3">
+            <span>Semana <span className="text-ink-1 tabular-nums">{report.avg7}p</span></span>
+            <span>Mês <span className="text-ink-1 tabular-nums">{report.avg30}p</span></span>
+            <span>Mín 90d <span className="text-ink-1 tabular-nums">{report.min90}p</span></span>
+            <span>Máx 90d <span className="text-ink-1 tabular-nums">{report.max90}p</span></span>
+            <span>Negociações/dia <span className="text-ink-1 tabular-nums">{report.volumeAvg30}</span></span>
+          </div>
+        </details>
       </div>
     </HudPanel>
   );

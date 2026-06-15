@@ -1,23 +1,26 @@
 import type { CodexRepository } from "./codexRepository";
 import { nullCodexRepository } from "./nullCodexRepository";
 
-// O Codex só opera com a flag ligada E uma conexão Postgres presente. Qualquer
-// outra situação mantém o repositório inerte, sem impacto no produto.
+function hasConnection(): boolean {
+  return Boolean(process.env.POSTGRES_URL ?? process.env.DATABASE_URL);
+}
+
+// Escrita do Codex (destilação e persistência). Sprint 2.
 export function isCodexEnabled(): boolean {
-  return (
-    process.env.CODEX_ENABLED === "true" &&
-    Boolean(process.env.POSTGRES_URL ?? process.env.DATABASE_URL)
-  );
+  return process.env.CODEX_ENABLED === "true" && hasConnection();
+}
+
+// Leitura assistiva do Codex nas respostas. Fica para a Sprint 3.
+export function isCodexReadEnabled(): boolean {
+  return process.env.CODEX_READ_ENABLED === "true" && hasConnection();
 }
 
 let cached: CodexRepository | null = null;
 
 export async function getCodexRepository(): Promise<CodexRepository> {
-  if (!isCodexEnabled()) return nullCodexRepository;
+  if (!isCodexEnabled() && !isCodexReadEnabled()) return nullCodexRepository;
   if (cached) return cached;
 
-  // Import dinâmico: o adapter Postgres (e o pacote @vercel/postgres) só é
-  // carregado quando o Codex está realmente ativo.
   const { postgresCodexRepository } = await import("./postgresCodexRepository");
   cached = postgresCodexRepository;
   return cached;

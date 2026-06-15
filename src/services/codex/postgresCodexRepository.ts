@@ -1,45 +1,30 @@
+import { getSql } from "@/lib/postgres";
 import type { CodexRepository } from "./codexRepository";
 import type { CodexEntry, CodexLevel } from "./types";
 
-// Subconjunto da API do @vercel/postgres que usamos. O pacote é carregado por
-// import dinâmico para não acoplar o build à sua presença: sem ele, o Codex
-// simplesmente fica inerte (factory devolve o repositório nulo).
-type QueryResult = { rows: Record<string, unknown>[] };
-type VercelSql = {
-  (strings: TemplateStringsArray, ...values: unknown[]): Promise<QueryResult>;
-  query: (text: string, values?: unknown[]) => Promise<QueryResult>;
-};
-
-let sqlPromise: Promise<VercelSql> | null = null;
-
-async function getSql(): Promise<VercelSql> {
-  if (!sqlPromise) {
-    const specifier = "@vercel/postgres";
-    sqlPromise = import(specifier).then(
-      (mod) => (mod as { sql: VercelSql }).sql
-    );
-  }
-  return sqlPromise;
-}
-
+// O acesso ao Postgres reaproveita a camada central (src/lib/postgres). A
+// definição da tabela do Codex fica neste domínio.
 let schemaReady: Promise<void> | null = null;
 
-async function ensureSchema(sql: VercelSql): Promise<void> {
+async function ensureCodexSchema(): Promise<void> {
   if (!schemaReady) {
-    schemaReady = sql`
-      CREATE TABLE IF NOT EXISTS codex_entries (
-        id BIGSERIAL PRIMARY KEY,
-        topic TEXT NOT NULL UNIQUE,
-        question TEXT NOT NULL,
-        knowledge TEXT NOT NULL,
-        level SMALLINT NOT NULL DEFAULT 2,
-        confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
-        occurrences INTEGER NOT NULL DEFAULT 1,
-        sources TEXT NOT NULL DEFAULT '',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-      );
-    `.then(() => undefined);
+    schemaReady = (async () => {
+      const sql = await getSql();
+      await sql`
+        CREATE TABLE IF NOT EXISTS codex_entries (
+          id BIGSERIAL PRIMARY KEY,
+          topic TEXT NOT NULL UNIQUE,
+          question TEXT NOT NULL,
+          knowledge TEXT NOT NULL,
+          level SMALLINT NOT NULL DEFAULT 2,
+          confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+          occurrences INTEGER NOT NULL DEFAULT 1,
+          sources TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `;
+    })();
   }
   return schemaReady;
 }
@@ -69,7 +54,7 @@ function rowToEntry(row: Record<string, unknown>): CodexEntry {
 export const postgresCodexRepository: CodexRepository = {
   async save(entry: CodexEntry): Promise<void> {
     const sql = await getSql();
-    await ensureSchema(sql);
+    await ensureCodexSchema();
 
     const sources = entry.sources.join(",");
 
@@ -99,7 +84,7 @@ export const postgresCodexRepository: CodexRepository = {
     if (keywords.length === 0) return [];
 
     const sql = await getSql();
-    await ensureSchema(sql);
+    await ensureCodexSchema();
 
     const conditions = keywords
       .map(
@@ -116,6 +101,21 @@ export const postgresCodexRepository: CodexRepository = {
        ORDER BY occurrences DESC, confidence DESC
        LIMIT 5`,
       params
+    );
+
+    return rows.map(rowToEntry);
+  },
+
+  async recent(limit: number): Promise<CodexEntry[]> {
+    const sql = await getSql();
+    await ensureCodexSchema();
+
+    const { rows } = await sql.query(
+      `SELECT topic, question, knowledge, level, confidence, occurrences, sources
+       FROM codex_entries
+       ORDER BY occurrences DESC, updated_at DESC
+       LIMIT $1`,
+      [limit]
     );
 
     return rows.map(rowToEntry);

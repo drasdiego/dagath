@@ -1,4 +1,4 @@
-import { getCodexRepository, isCodexEnabled } from "./index";
+import { getCodexRepository, isCodexEnabled, isCodexReadEnabled } from "./index";
 import { distill } from "./distillationService";
 import { sanitizeCodexEntry } from "./sanitize";
 import type { CodexEntry } from "./types";
@@ -10,9 +10,9 @@ const MIN_OCCURRENCES = 5;
 const MIN_LEVEL = 2;
 
 export const codexService = {
-  // Leitura assistiva controlada. Nunca substitui dado oficial da Dagath.
+  // Leitura assistiva controlada (Sprint 3). Nunca substitui dado oficial.
   async getAssistiveKnowledge(query: string): Promise<CodexEntry[]> {
-    if (!isCodexEnabled()) return [];
+    if (!isCodexReadEnabled()) return [];
 
     try {
       const repo = await getCodexRepository();
@@ -28,7 +28,8 @@ export const codexService = {
     }
   },
 
-  // Escrita: destila, sanitiza e persiste. Falha silenciosa, nunca afeta a resposta.
+  // Escrita (Sprint 2): destila, sanitiza e persiste. Falha silenciosa, nunca
+  // afeta a resposta da Cephalon.
   async recordKnowledge(question: string, answer: string): Promise<void> {
     if (!isCodexEnabled()) return;
 
@@ -43,6 +44,18 @@ export const codexService = {
       await repo.save(safe);
     } catch {
       // Destilação ou persistência nunca derruba a experiência da Cephalon.
+    }
+  },
+
+  // Inspeção administrativa do conhecimento coletivo (validação da Sprint 2).
+  async listRecent(limit: number): Promise<CodexEntry[]> {
+    if (!isCodexEnabled() && !isCodexReadEnabled()) return [];
+
+    try {
+      const repo = await getCodexRepository();
+      return await repo.recent(limit);
+    } catch {
+      return [];
     }
   },
 };

@@ -334,3 +334,33 @@ body::after {
   background: var(--gold);
   box-shadow: 0 0 8px var(--gold-glow);
 }
+
+/* Acessibilidade cognitiva: respeita quem pede menos movimento no sistema.
+   Neutraliza animações, transições e rolagem suave sem mudar o layout. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Modo de brilho reduzido (opt-in). Atenua apenas os halos/glow via tokens,
+   sem alterar layout, cores base ou a estrutura premium. Default permanece
+   intacto. Útil para sensibilidade sensorial e conforto em uso prolongado. */
+[data-glow="low"] {
+  --cyan-glow: rgba(111, 227, 255, 0.08);
+  --gold-glow: rgba(245, 200, 110, 0.08);
+  --bracket-glow: 0px;
+  --panel-inset-glow: transparent;
+}
+
+[data-theme="light"][data-glow="low"] {
+  --cyan-glow: rgba(12, 127, 166, 0.06);
+  --gold-glow: rgba(154, 108, 20, 0.05);
+  --bracket-glow: 0px;
+  --panel-inset-glow: transparent;
+}

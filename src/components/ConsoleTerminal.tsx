@@ -149,7 +149,7 @@ function ResultView({ result }: { result: ConsoleResult }) {
   return null;
 }
 
-export default function ConsoleTerminal() {
+export default function ConsoleTerminal({ embedded = false }: { embedded?: boolean }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [sessionMemory, setSessionMemory] = useState<SessionMemory | null>(null);
   const [input, setInput] = useState("");
@@ -260,7 +260,7 @@ export default function ConsoleTerminal() {
   }
 
   return (
-    <div className="hud-panel hud-panel--accent flex flex-col h-[70vh]">
+    <div className={`hud-panel hud-panel--accent flex flex-col ${embedded ? "h-full" : "h-[70vh]"}`}>
       <header className="hud-panel__title">
         <span className="hud-panel__tick" />
         Cephalon · Assistente Dagath

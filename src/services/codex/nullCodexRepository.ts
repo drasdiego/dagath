@@ -7,5 +7,8 @@ export const nullCodexRepository: CodexRepository = {
   async findRelevant() {
     return [];
   },
+  async recent() {
+    return [];
+  },
   async consolidate() {},
 };

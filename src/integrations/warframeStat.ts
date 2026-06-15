@@ -74,6 +74,7 @@ export type WsItemData = {
   name: string;
   category?: string;
   type?: string;
+  productCategory?: string;
   description?: string;
   wikiaUrl?: string;
   masteryReq?: number;
@@ -81,6 +82,36 @@ export type WsItemData = {
   introduced?: { name?: string; date?: string };
   drops?: WsDrop[];
   components?: WsComponent[];
+  // Atributos de arma (presentes apenas quando o item é uma arma).
+  criticalChance?: number;
+  criticalMultiplier?: number;
+  procChance?: number;
+  fireRate?: number;
+  totalDamage?: number;
+  magazineSize?: number;
+  reloadTime?: number;
+  disposition?: number;
+};
+
+export type WsAbility = {
+  name: string;
+  description: string;
+};
+
+export type WsWarframe = {
+  name: string;
+  description?: string;
+  passiveDescription?: string;
+  abilities?: WsAbility[];
+  health?: number;
+  shield?: number;
+  armor?: number;
+  sprintSpeed?: number;
+  masteryReq?: number;
+  wikiaUrl?: string;
+  isPrime?: boolean;
+  category?: string;
+  introduced?: { name?: string; date?: string };
 };
 
 async function request<T>(path: string, revalidateSeconds = 60): Promise<T> {
@@ -121,6 +152,13 @@ export const warframeStat = {
     return request<WsItemData>(
       `/items/${encodeURIComponent(name)}/?by=name`,
       3600
+    );
+  },
+
+  async getWarframes(): Promise<WsWarframe[]> {
+    return request<WsWarframe[]>(
+      "/warframes/?only=name,description,passiveDescription,abilities,health,shield,armor,sprintSpeed,masteryReq,wikiaUrl,isPrime,category,introduced",
+      86400
     );
   },
 };

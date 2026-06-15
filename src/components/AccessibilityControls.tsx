@@ -7,8 +7,10 @@ const ZOOM_MAX = 1.4;
 const ZOOM_STEP = 0.1;
 const ZOOM_KEY = "dagath-zoom";
 const THEME_KEY = "dagath-theme";
+const GLOW_KEY = "dagath-glow";
 
 type Theme = "dark" | "light";
+type Glow = "full" | "low";
 
 function SunIcon() {
   return (
@@ -34,9 +36,18 @@ function MoonIcon() {
   );
 }
 
+function GlowIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 L13.6 10.4 L21 12 L13.6 13.6 L12 21 L10.4 13.6 L3 12 L10.4 10.4 Z" />
+    </svg>
+  );
+}
+
 export default function AccessibilityControls() {
   const [zoom, setZoom] = useState(1);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [glow, setGlow] = useState<Glow>("full");
 
   useEffect(() => {
     try {
@@ -49,9 +60,14 @@ export default function AccessibilityControls() {
       if (savedTheme === "light" || savedTheme === "dark") {
         setTheme(savedTheme);
       }
+      const savedGlow = localStorage.getItem(GLOW_KEY);
+      if (savedGlow === "low" || savedGlow === "full") {
+        setGlow(savedGlow);
+      }
     } catch {
       setZoom(1);
       setTheme("dark");
+      setGlow("full");
     }
   }, []);
 
@@ -69,6 +85,13 @@ export default function AccessibilityControls() {
     } catch {}
   }, [theme]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-glow", glow);
+    try {
+      localStorage.setItem(GLOW_KEY, glow);
+    } catch {}
+  }, [glow]);
+
   function decrease() {
     setZoom((current) => Math.max(ZOOM_MIN, Math.round((current - ZOOM_STEP) * 10) / 10));
   }
@@ -83,6 +106,10 @@ export default function AccessibilityControls() {
 
   function toggleTheme() {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
+  }
+
+  function toggleGlow() {
+    setGlow((current) => (current === "full" ? "low" : "full"));
   }
 
   return (
@@ -117,6 +144,19 @@ export default function AccessibilityControls() {
         className="border border-line-2 p-1.5 text-ink-2 hover:border-line-cyan hover:text-cyan transition-colors ml-1"
       >
         {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+      </button>
+      <button
+        onClick={toggleGlow}
+        aria-label={glow === "full" ? "Reduzir brilho" : "Restaurar brilho"}
+        aria-pressed={glow === "low"}
+        title={glow === "full" ? "Reduzir brilho" : "Restaurar brilho"}
+        className={`border p-1.5 transition-colors ${
+          glow === "low"
+            ? "border-line-cyan bg-cyan-faint text-cyan"
+            : "border-line-2 text-ink-2 hover:border-line-cyan hover:text-cyan"
+        }`}
+      >
+        <GlowIcon active={glow === "low"} />
       </button>
     </div>
   );
