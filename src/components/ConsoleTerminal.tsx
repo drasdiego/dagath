@@ -162,7 +162,13 @@ function ResultView({ result }: { result: ConsoleResult }) {
   return null;
 }
 
-export default function ConsoleTerminal({ embedded = false }: { embedded?: boolean }) {
+export default function ConsoleTerminal({
+  embedded = false,
+  onMinimize,
+}: {
+  embedded?: boolean;
+  onMinimize?: () => void;
+}) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [sessionMemory, setSessionMemory] = useState<SessionMemory | null>(null);
   const [input, setInput] = useState("");
@@ -274,9 +280,23 @@ export default function ConsoleTerminal({ embedded = false }: { embedded?: boole
 
   return (
     <div className={`hud-panel hud-panel--accent flex flex-col ${embedded ? "h-full" : "h-[70vh]"}`}>
-      <header className="hud-panel__title">
-        <span className="hud-panel__tick" />
-        Cephalon · Assistente Dagath
+      <header className="hud-panel__title flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2">
+          <span className="hud-panel__tick" />
+          Cephalon · Assistente Dagath
+        </span>
+        {onMinimize && (
+          <button
+            onClick={onMinimize}
+            aria-label="Minimizar chat"
+            title="Minimizar"
+            className="shrink-0 px-1 text-ink-3 hover:text-cyan transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <line x1="5" y1="18" x2="19" y2="18" />
+            </svg>
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-2">

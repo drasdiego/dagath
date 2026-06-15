@@ -17,11 +17,10 @@ function ChatIcon() {
   );
 }
 
-function CloseIcon() {
+function MinimizeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <line x1="5" y1="18" x2="19" y2="18" />
     </svg>
   );
 }
@@ -31,20 +30,23 @@ export default function CephalonDock() {
 
   return (
     <>
-      {open && (
-        <div
-          role="dialog"
-          aria-label="Cephalon, assistente Dagath"
-          style={OPAQUE_SURFACE}
-          className="fixed bottom-24 right-4 z-50 w-[min(420px,calc(100vw-2rem))] h-[min(70vh,640px)] shadow-2xl"
-        >
-          <ConsoleTerminal embedded />
-        </div>
-      )}
+      {/* O painel fica sempre montado para preservar a conversa; minimizar só o
+          esconde, em vez de destruir o estado. */}
+      <div
+        role="dialog"
+        aria-label="Cephalon, assistente Dagath"
+        aria-hidden={!open}
+        style={OPAQUE_SURFACE}
+        className={`fixed bottom-24 right-4 z-50 w-[min(420px,calc(100vw-2rem))] h-[min(70vh,640px)] shadow-2xl ${
+          open ? "" : "hidden"
+        }`}
+      >
+        <ConsoleTerminal embedded onMinimize={() => setOpen(false)} />
+      </div>
 
       <button
         onClick={() => setOpen((current) => !current)}
-        aria-label={open ? "Fechar Cephalon" : "Abrir Cephalon"}
+        aria-label={open ? "Minimizar Cephalon" : "Abrir Cephalon"}
         aria-expanded={open}
         title="Cephalon · Assistente"
         className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 border px-4 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] backdrop-blur-md transition-colors ${
@@ -54,8 +56,8 @@ export default function CephalonDock() {
         }`}
         style={{ clipPath: CHAMFER }}
       >
-        {open ? <CloseIcon /> : <ChatIcon />}
-        {open ? "Fechar" : "Cephalon"}
+        {open ? <MinimizeIcon /> : <ChatIcon />}
+        {open ? "Minimizar" : "Cephalon"}
       </button>
     </>
   );
