@@ -1,5 +1,3 @@
-import sharp from "sharp";
-
 const cache = new Map<string, string | null>();
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
@@ -68,6 +66,9 @@ export const artColorService = {
       }
       const buffer = Buffer.from(await response.arrayBuffer());
 
+      // Import tardio e tolerante: se o módulo nativo não carregar na função
+      // serverless, o catch devolve null em vez de derrubar a página inteira.
+      const { default: sharp } = await import("sharp");
       const { data, info } = await sharp(buffer)
         .flatten({ background: { r: 0, g: 0, b: 0 } })
         .resize(48, 48, { fit: "inside" })
