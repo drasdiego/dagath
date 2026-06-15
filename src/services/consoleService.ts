@@ -61,11 +61,18 @@ export type ConsoleItemsResult = {
   matches: { slug: string; name: string; thumb: string | null }[];
 };
 
+export type ItemReference = {
+  name: string;
+  slug: string;
+  kind: "item" | "frame";
+};
+
 export type ConsoleAiResult = {
   kind: "ai";
   question: string;
   answer: string;
   memory: SessionMemory;
+  references: ItemReference[];
 };
 
 export type ConsoleErrorResult = {
@@ -113,6 +120,7 @@ const AI_SYSTEM_INSTRUCTION = [
   "Você lembra apenas da missão atual desta sessão, nunca do usuário como pessoa. Não finja lembrar de conversas passadas além desta sessão.",
   "Hierarquia de fontes, nesta ordem: 1) Dagath, fonte oficial da verdade para preço e disponibilidade; 2) seu conhecimento consolidado de Warframe; 3) Codex Vivo, conhecimento coletivo auxiliar; 4) contexto operacional da sessão. Em caso de conflito, vale Dagath sobre modelo, modelo sobre Codex, Codex sobre contexto. O Codex Vivo é auxiliar e nunca substitui dado oficial da Dagath. Quando não houver dado oficial, diga isso explicitamente.",
   "Tom: especialista confiante, direta e prestativa, como um bom Cephalon de bordo.",
+  "Quando você recomendar ou citar itens específicos do jogo (mods, armas, warframes, arcanes, sets), inclua na ÚLTIMA linha da resposta, e somente nela, uma lista neste formato exato: [itens: Nome Oficial 1, Nome Oficial 2]. Use os nomes oficiais em inglês. Não comente essa linha. Se não citar nenhum item específico, não inclua a linha.",
 ].join(" ");
 
 function normalize(input: string): string {
@@ -224,6 +232,57 @@ function buildFrameContext(frame: Frame): string {
   if (stats.length > 0) lines.push(`Atributos base: ${stats.join(", ")}.`);
   if (frame.introduced) lines.push(`Introduzido em: ${frame.introduced}.`);
   return lines.join("\n");
+}
+
+// Extrai a linha "[itens: ...]" que a Cephalon adiciona ao recomendar itens,
+// remove-a do texto exibido e resolve cada nome para um link na Dagath.
+async function resolveReferences(
+  answer: string
+): Promise<{ cleanAnswer: string; references: ItemReference[] }> {
+  const match = answer.match(/\[\s*iten?s?\s*:\s*([^\]]+)\]/i);
+  if (!match) return { cleanAnswer: answer.trim(), references: [] };
+
+  const cleanAnswer = answer.replace(match[0], "").trim();
+  const names = Array.from(
+    new Set(
+      match[1]
+        .split(/[,;]/)
+        .map((name) => name.trim())
+        .filter((name) => name.length >= 2)
+    )
+  ).slice(0, 10);
+
+  const references: ItemReference[] = [];
+  const seen = new Set<string>();
+
+  for (const name of names) {
+    try {
+      const frames = await frameService.search(name, 1);
+      const frame = frames[0];
+      if (frame && frame.name.toLowerCase() === name.toLowerCase()) {
+        const key = `f:${frame.slug}`;
+        if (!seen.has(key)) {
+          references.push({ name: frame.name, slug: frame.slug, kind: "frame" });
+          seen.add(key);
+        }
+        continue;
+      }
+
+      const items = await warframeMarket.searchItems(name, 1);
+      const item = items[0];
+      if (item) {
+        const key = `i:${item.slug}`;
+        if (!seen.has(key)) {
+          references.push({ name: item.i18n.en.name, slug: item.slug, kind: "item" });
+          seen.add(key);
+        }
+      }
+    } catch {
+      // Nome que não resolve é simplesmente ignorado.
+    }
+  }
+
+  return { cleanAnswer, references };
 }
 
 export const consoleService = {
@@ -378,13 +437,16 @@ export const consoleService = {
       sections.push(`Pergunta do usuário: ${rawInput.trim()}`);
 
       const prompt = sections.join("\n\n");
-      const answer = await generateText(prompt, AI_SYSTEM_INSTRUCTION);
+      const rawAnswer = await generateText(prompt, AI_SYSTEM_INSTRUCTION);
+
+      // Extrai os itens citados e limpa o marcador do texto exibido.
+      const { cleanAnswer, references } = await resolveReferences(rawAnswer);
 
       // Memory Extraction: evolui a memória operacional após responder.
       // Nunca pode derrubar a resposta, então falha silenciosa mantém a anterior.
       let updatedMemory = memory;
       try {
-        updatedMemory = await extractMemory(memory, rawInput.trim(), answer);
+        updatedMemory = await extractMemory(memory, rawInput.trim(), cleanAnswer);
       } catch {
         updatedMemory = memory;
       }
@@ -392,13 +454,19 @@ export const consoleService = {
       // Knowledge Distillation em segundo plano: não bloqueia a resposta.
       try {
         after(() => {
-          void codexService.recordKnowledge(rawInput.trim(), answer);
+          void codexService.recordKnowledge(rawInput.trim(), cleanAnswer);
         });
       } catch {
         // Fora de um contexto de request: ignora a destilação.
       }
 
-      return { kind: "ai", question: rawInput.trim(), answer, memory: updatedMemory };
+      return {
+        kind: "ai",
+        question: rawInput.trim(),
+        answer: cleanAnswer,
+        memory: updatedMemory,
+        references,
+      };
     } catch {
       return {
         kind: "error",

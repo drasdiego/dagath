@@ -44,6 +44,19 @@ function ResultView({ result }: { result: ConsoleResult }) {
         <p className="font-body text-sm text-ink-0 whitespace-pre-wrap leading-relaxed">
           {result.answer}
         </p>
+        {result.references?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {result.references.map((ref) => (
+              <Link
+                key={`${ref.kind}-${ref.slug}`}
+                href={`/${ref.kind === "frame" ? "frame" : "item"}/${ref.slug}`}
+                className="font-mono text-[10px] uppercase tracking-[0.1em] border border-line-2 px-2 py-1 text-cyan hover:border-line-cyan hover:bg-cyan-faint transition-colors"
+              >
+                {ref.name}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
