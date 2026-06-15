@@ -5,6 +5,7 @@ import MoverList from "@/components/MoverList";
 import PulseList from "@/components/PulseList";
 import TrendList from "@/components/TrendList";
 import OpportunityList from "@/components/OpportunityList";
+import JourneyPanel from "@/components/JourneyPanel";
 import WorldStatus from "@/components/WorldStatus";
 import { dashboardService } from "@/services/dashboardService";
 import { marketPulseService } from "@/services/marketPulseService";
@@ -167,7 +168,10 @@ export default async function DashboardPage() {
         <OpportunityList opportunities={moreOpportunities} title="Mais caçadas que valem a pena hoje" />
       )}
 
-      {/* 3. O que está rolando no Sistema Origem */}
+      {/* 3. Próximos objetivos · jornada do jogador */}
+      <JourneyPanel />
+
+      {/* 4. O que está rolando no Sistema Origem */}
       <div>
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 mb-2">
           // O que está rolando no Sistema Origem
