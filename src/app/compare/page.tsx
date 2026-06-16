@@ -76,9 +76,13 @@ export default async function ComparePage({
         <h2 className="font-display text-2xl lg:text-3xl font-semibold text-ink-0 leading-tight">
           {result.verdict}
         </h2>
-        {winnerName && (
+        {winnerName ? (
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-            Recomendado: {winnerName}
+            Melhor encaixe para {goal}: {winnerName}
+          </p>
+        ) : (
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-3">
+            Depende do seu estilo, Tenno
           </p>
         )}
         <div className="flex items-center gap-2 mt-1">
