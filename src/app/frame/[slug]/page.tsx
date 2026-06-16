@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { frameService } from "@/services/frameService";
+import { compareService } from "@/services/compareService";
 import HudPanel from "@/components/HudPanel";
 
 export const runtime = "nodejs";
@@ -14,6 +16,8 @@ export default async function FramePage({
   const frame = await frameService.getBySlug(slug);
 
   if (!frame) notFound();
+
+  const suggestions = await compareService.suggestTargets(frame);
 
   const stats = [
     frame.health !== null && { label: "Vida", value: frame.health },
@@ -80,6 +84,25 @@ export default async function FramePage({
           </div>
         )}
       </section>
+
+      {suggestions.length > 0 && (
+        <HudPanel title="Comparar este Warframe">
+          <p className="font-body text-xs text-ink-2 mb-3">
+            Em dúvida sobre qual escolher? A Dagath compara para o seu objetivo e dá o veredito.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((target) => (
+              <Link
+                key={target.slug}
+                href={`/compare?a=${frame.slug}&b=${target.slug}`}
+                className="border border-line-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-cyan hover:border-line-cyan hover:bg-cyan-faint transition-colors"
+              >
+                vs {target.name}
+              </Link>
+            ))}
+          </div>
+        </HudPanel>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         {frame.passive && (

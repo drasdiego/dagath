@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Chakra_Petch, Inter, JetBrains_Mono } from "next/font/google";
 import HudNav from "@/components/HudNav";
-import CephalonDock from "@/components/CephalonDock";
 import "./globals.css";
 
 const chakra = Chakra_Petch({
@@ -43,7 +42,6 @@ export default function RootLayout({
         />
         <HudNav />
         <div className="relative z-10 pt-16">{children}</div>
-        <CephalonDock />
       </body>
     </html>
   );
