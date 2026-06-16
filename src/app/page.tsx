@@ -6,12 +6,14 @@ import PulseList from "@/components/PulseList";
 import TrendList from "@/components/TrendList";
 import OpportunityList from "@/components/OpportunityList";
 import JourneyPanel from "@/components/JourneyPanel";
+import HardDecisions from "@/components/HardDecisions";
 import WorldStatus from "@/components/WorldStatus";
 import { dashboardService } from "@/services/dashboardService";
 import { marketPulseService } from "@/services/marketPulseService";
 import { trendService } from "@/services/trendService";
 import { opportunityService } from "@/services/opportunityService";
 import { worldService } from "@/services/worldService";
+import { decisionService } from "@/services/decisionService";
 import type { Opportunity } from "@/services/opportunityService";
 
 export const revalidate = 60;
@@ -35,8 +37,6 @@ function greeting(): string {
   return "Boa noite, Tenno";
 }
 
-// Sigilo da Cephalon: presença discreta da inteligência que assina a leitura.
-// Geometria Orokin de traço fino, não decoração ruidosa.
 function CephalonSigil() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="miter" aria-hidden="true">
@@ -77,21 +77,21 @@ function CaptionedRow({ cells }: { cells: RowCell[] }) {
   );
 }
 
-// A recomendação principal, dita pela Cephalon. Autoria, voz e o porquê em
-// destaque: o jogador sente uma inteligência orientando, não um widget.
+// Protagonista absoluto da home: a recomendação da Cephalon, legível em segundos,
+// respondendo em ordem o que está recomendado, o veredito, por que importa e a ação.
 function PrimeDirective({ opportunity }: { opportunity: Opportunity | null }) {
   if (!opportunity) {
     return (
       <section className="hud-panel hud-panel--gold hud-panel--clipped flex flex-col gap-3 p-7">
         <div className="flex items-center gap-2 text-ink-3">
           <span className="text-cyan"><CephalonSigil /></span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em]">Cephalon Dagath</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em]">Cephalon Dagath · o que fazer agora</span>
         </div>
         <h2 className="font-display text-2xl lg:text-3xl font-semibold text-ink-0 leading-tight">
           O Sistema Origem está calmo, Tenno
         </h2>
         <p className="font-body text-sm text-ink-1 max-w-2xl leading-relaxed">
-          Não vejo nenhuma caçada urgente agora. Bom momento para farmar relíquias, montar uma build, ou me perguntar qual o próximo passo da sua jornada.
+          Não vejo nenhuma caçada urgente no mercado agora. Bom momento para farmar relíquias, montar uma build, ou definir um objetivo na sua jornada que eu acompanho daqui.
         </p>
       </section>
     );
@@ -111,22 +111,25 @@ function PrimeDirective({ opportunity }: { opportunity: Opportunity | null }) {
           <img
             src={opportunity.thumb}
             alt={opportunity.name}
-            width={72}
-            height={72}
+            width={76}
+            height={76}
             className="shrink-0 border border-line-1 bg-bg-2/50 p-1"
           />
         ) : (
-          <span className="w-[72px] h-[72px] border border-line-1 shrink-0" />
+          <span className="w-[76px] h-[76px] border border-line-1 shrink-0" />
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
           <h2 className="font-display text-2xl lg:text-4xl font-semibold text-ink-0 leading-[1.05]">
-            {opportunity.title}
+            {opportunity.name}
           </h2>
-          <p className="font-body text-sm text-ink-1 leading-relaxed max-w-2xl">
-            <span className="text-ink-0">{opportunity.name}.</span> {opportunity.detail}
+          <p className="font-display text-lg font-semibold text-gold leading-snug">
+            {opportunity.title}
           </p>
-          <div className="flex items-center gap-5 mt-1">
+          <p className="font-body text-sm text-ink-1 leading-relaxed max-w-2xl">
+            {opportunity.detail}
+          </p>
+          <div className="flex items-center gap-5 mt-1.5">
             <span className="font-display text-2xl font-semibold text-gold tabular-nums">
               {opportunity.currentPrice}p
             </span>
@@ -149,6 +152,7 @@ export default async function DashboardPage() {
   const trends = await trendService.getTrends();
   const opportunities = await opportunityService.getOpportunities();
   const world = await worldService.getWorldState();
+  const decisions = decisionService.getHardDecisions();
 
   const buyPressure = pulse && pulse.totalOrders > 0
     ? Math.round((pulse.buyOrders / pulse.totalOrders) * 100)
@@ -176,20 +180,27 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* 1 e 2. Dagath recomenda o que fazer agora, e por quê */}
+      {/* 1. O que fazer agora: protagonista + faixa de outras oportunidades */}
       <PrimeDirective opportunity={directive} />
 
-      {/* 3. Sua jornada, como contexto pessoal */}
-      <JourneyPanel />
-
-      {/* 4. O mundo reage e oferece oportunidades */}
-      <WorldStatus world={world} />
-
       {moreOpportunities.length > 0 && (
-        <OpportunityList opportunities={moreOpportunities} title="Mais caçadas que valem a pena hoje" />
+        <OpportunityList
+          opportunities={moreOpportunities}
+          title="Outras oportunidades que detectei para você"
+          variant="accent"
+        />
       )}
 
-      {/* 5. Mercado como ferramenta de apoio (recolhido) */}
+      {/* 2. Sua jornada e próximos objetivos */}
+      <JourneyPanel />
+
+      {/* 3. Decisões difíceis: a Compare Engine na home */}
+      <HardDecisions decisions={decisions} />
+
+      {/* 4. O mundo ao redor */}
+      <WorldStatus world={world} />
+
+      {/* 5. Complementar: mercado como ferramenta de apoio (recolhido) */}
       <details className="group flex flex-col gap-3">
         <summary className="flex cursor-pointer select-none items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-ink-3 transition-colors hover:text-cyan [&::-webkit-details-marker]:hidden">
           <span className="inline-block transition-transform group-open:rotate-90">›</span>

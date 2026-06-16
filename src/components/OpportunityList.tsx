@@ -5,14 +5,16 @@ import type { Opportunity } from "@/services/opportunityService";
 export default function OpportunityList({
   opportunities,
   title,
+  variant = "gold",
 }: {
   opportunities: Opportunity[];
   title?: string;
+  variant?: "default" | "accent" | "gold";
 }) {
   return (
     <HudPanel
       title={title ?? `Oportunidades detectadas · ${opportunities.length}`}
-      variant="gold"
+      variant={variant}
       clipped
     >
       {opportunities.length === 0 ? (

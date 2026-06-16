@@ -110,9 +110,14 @@ export default function JourneyPanel() {
       </div>
 
       {objectives.length === 0 ? (
-        <p className="font-body text-sm text-ink-2 leading-relaxed">
-          Defina seu próximo objetivo, Tenno. A Orbiter acompanha a sua jornada: farmar um frame, montar uma build, juntar platina para o próximo Prime.
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="font-body text-sm text-ink-1 leading-relaxed">
+            A Orbiter está acompanhando a sua jornada, Tenno.
+          </p>
+          <p className="font-body text-sm text-ink-2 leading-relaxed">
+            Defina seu primeiro objetivo (farmar um frame, montar uma build, juntar platina para o próximo Prime) e eu organizo seus próximos passos e ligo as recomendações a ele.
+          </p>
+        </div>
       ) : (
         <ul className="flex flex-col divide-y divide-line-1">
           {objectives.map((objective) => (
